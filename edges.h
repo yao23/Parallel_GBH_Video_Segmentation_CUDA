@@ -39,7 +39,7 @@ typedef struct {
 	int a, b;
 } edge;
 
-__host__ __device__
+__device__
 float sqrt3(const float x)  
 {
   union
@@ -53,7 +53,7 @@ float sqrt3(const float x)
   return u.x;
 }
 
-__host__ __device__
+__device__
 double inline square3(double n)
 {
 	return n*n;	
