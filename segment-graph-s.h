@@ -81,18 +81,19 @@ __host__ __device__ void quicksort(T a[], const int& leftarg, const int& rightar
  * c: constant for treshold function.
  */
 __host__ __device__
-universe_s *segment_graph_s(int num_vertices, int num_edges, edge *edges, 
-			float c, vector<edge>* edges_remain) { 
+/*universe_s **/void segment_graph_s(int num_vertices, int num_edges, edge *edges, 
+			float c, vector<edge>* edges_remain, universe_s *u,
+                        float *threshold) { 
   // new vector containing remain edges
   edges_remain->clear();
   // sort edges by weight
   quicksort<edge>(edges, 0, num_edges - 1);
 
   // make a disjoint-set forest
-  universe_s *u = new universe_s(num_vertices);
+//  universe_s *u = new universe_s(num_vertices);
 
   // init thresholds
-  float *threshold = new float[num_vertices];
+//  float *threshold = new float[num_vertices];
   for (int i = 0; i < num_vertices; i++)
     threshold[i] = THRESHOLD(1,c);
 
@@ -116,8 +117,8 @@ universe_s *segment_graph_s(int num_vertices, int num_edges, edge *edges,
   }
 
   // free up
-  delete threshold;
-  return u;
+//  delete threshold;
+//  return u;
 }
 
 #endif
