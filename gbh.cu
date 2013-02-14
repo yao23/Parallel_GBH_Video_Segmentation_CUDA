@@ -96,9 +96,12 @@ __constant__ edge *edges7 = new edge[num_edges_s];
 */
 // process every image with graph-based segmentation
 __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
-        int width, int height, float c, /*int num_edges, int num_frame,*/ vector<edge>* edges_remain0, vector<edge>* edges_remain1,
-        vector<edge>* edges_remain2, vector<edge>* edges_remain3, vector<edge>* edges_remain4, vector<edge>* edges_remain5, 
-        vector<edge>* edges_remain6, vector<edge>* edges_remain7) {
+        int width, int height, float c, edge *edges_remain0, edge *edges_remain1, edge *edges_remain2, edge *edges_remain3,
+        edge *edges_remain4, edge *edges_remain5, edge *edges_remain6, edge *edges_remain7, edge *edges0, edge *edges1,
+        edge *edges2, edge *edges3, edge *edges4, edge *edges5, edge *edges6, edge *edges7, float *threshold0, float *threshold1,
+        float *threshold2, float *threshold3, float *threshold4, float *threshold5, float *threshold6, float *threshold7,
+        unvierse_s *u0, universe_s *u1, universe_s *u2, universe_s *u3, universe_s *u4, universe_s *u5, universe_s *u6,
+        universe_s *u7 ) {
 //   printf("The frame number is %d and case number is %d.\n", num_frame, case_num);	
 //  int index = blockIdx.x * blockDim.x + threadIdx.x; // figure out item 1,2,3 ???
   int level = 0;
@@ -106,207 +109,111 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
   int num_frame = blockDim.x;
   // ----- node number
   int num_vertices = num_frame * width * height;
-  int num_bytes = num_vertices * sizeof(uni_elt);
   int num_bytes_threshold = num_vertices * sizeof(float);
   switch(case_num) {
     case 0: 
     {
-      edge *edges0 = new edge[num_edges_s];
-      //universe_s* u0 = new universe_s(num_frame * width * height);
       int s_index = 0;
       int e_index = num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
-      float *threshold0 = new float[num_vertices];
-      universe_s *u0 = new universe_s(num_vertices);
-      universe_s *dev_u0 = NULL;
-      cudaMalloc((void**)&threshold0, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u0, num_bytes);
-//      universe_s *u0 = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0);
-      u0 = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0, threshold0);
-      cudaMemcpy(u0, dev_u0, num_bytes, cudaMemcpyDeviceToHost);
+      segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0, threshold0);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u0->find(i-s_index), u0->rank(i-s_index), u0->size(i-s_index), u0->mst(i-s_index)); 
-      delete[] edges0; delete u0; 
-      cudaFree(dev_u0); cudaFree(threshold0);
     }
     break;
     case 1: 
     {
-      edge *edges1 = new edge[num_edges_s];
-      //universe_s* u1 = new universe_s(num_frame * width * height);
       int s_index = num_vertices;
       int e_index = 2 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
-      float *threshold1 = new float[num_vertices];
-      universe_s *u1 = new universe_s(num_vertices);
-      universe_s *dev_u1 = NULL;
-      cudaMalloc((void**)&threshold1, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u1, num_bytes);
-//      universe_s *u1 = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1);
-      u1 = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1, threshold1);
-      cudaMemcpy(u1, dev_u1, num_bytes, cudaMemcpyDeviceToHost);
+      segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1, threshold1);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u1->find(i-s_index), u1->rank(i-s_index), u1->size(i-s_index), u1->mst(i-s_index));
-//              gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges1, u1, c, 1, level, edges_remain1, num_edges, num_frame);            
-      delete[] edges1; delete u1;
-      cudaFree(dev_u1); cudaFree(threshold1);
     }
     break;
     case 2: 
     {
-      edge *edges2 = new edge[num_edges_s];
-      //universe_s* u2 = new universe_s(num_frame * width * height);
       int s_index = 2 * num_vertices;
       int e_index = 3 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
-      float *threshold2 = new float[num_vertices];
-      universe_s *u2 = new universe_s(num_vertices);
-      universe_s *dev_u2 = NULL;
-      cudaMalloc((void**)&threshold2, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u2, num_bytes);
-//      universe_s *u2 = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2);
-      u2 = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2, threshold2);
+      segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2, threshold2);
       cudaMemcpy(u2, dev_u2, num_bytes, cudaMemcpyDeviceToHost);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u2->find(i-s_index), u2->rank(i-s_index), u2->size(i-s_index), u2->mst(i-s_index));
-//	      gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges2, u2, c, 2, level, edges_remain2, num_edges, num_frame);            
-      delete[] edges2; delete u2; 
-      cudaFree(dev_u2); cudaFree(threshold2);
     }
     break;
     case 3: 
     {
-      edge *edges3 = new edge[num_edges_s];
-      //universe_s* u3 = new universe_s(num_frame * width * height);
       int s_index = 3 * num_vertices;
       int e_index = 4 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
-      float *threshold3 = new float[num_vertices];
-      universe_s *u3 = new universe_s(num_vertices);
-      universe_s *dev_u3 = NULL;
-      cudaMalloc((void**)&threshold3, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u3, num_bytes);
-//      universe_s *u3 = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3);
-      u3 = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3, threshold3);
-      cudaMemcpy(u3, dev_u3, num_bytes, cudaMemcpyDeviceToHost);
+      segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3, threshold3);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u3->find(i-s_index), u3->rank(i-s_index), u3->size(i-s_index), u3->mst(i-s_index));
-//	      gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges3, u3, c, 3, level, edges_remain3, num_edges, num_frame);            
-      delete[] edges3; delete u3; 
-      cudaFree(dev_u3); cudaFree(threshold3);
-    }
     }
     break;
     case 4: 
     {
-      edge *edges4 = new edge[num_edges_s];
-      //universe_s* u4 = new universe_s(num_frame * width * height);
       int s_index = 4 * num_vertices;
       int e_index = 5 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges4, num_frame, width, height, smooth_r, smooth_g, smooth_b, 4);
       //  printf("Finished edge initialization.\n");
-      float *threshold4 = new float[num_vertices];
-      universe_s *u4 = new universe_s(num_vertices);
-      universe_s *dev_u4 = NULL;
-      cudaMalloc((void**)&threshold4, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u4, num_bytes);
-//      universe_s *u4 = segment_graph_s(num_vertices, num_edges_s, edges4, c, edges_remain4);
-      u4 = segment_graph_s(num_vertices, num_edges_s, edges4, c, edges_remain4, u4, threshold4);
-      cudaMemcpy(u4, dev_u4, num_bytes, cudaMemcpyDeviceToHost);
+      segment_graph_s(num_vertices, num_edges_s, edges4, c, edges_remain4, u4, threshold4);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u4->find(i-s_index), u4->rank(i-s_index), u4->size(i-s_index), u4->mst(i-s_index));
-//	      gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges4, u4, c, 4, level, edges_remain4, num_edges, num_frame);            
-      delete[] edges4; delete u4; 
-      cudaFree(dev_u4); cudaFree(threshold4);
     }
     break;
     case 5: 
     {
-      edge *edges5 = new edge[num_edges_s];
-      //universe_s* u5 = new universe_s(num_frame * width * height);
       int s_index = 5 * num_vertices;
       int e_index = 6 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges5, num_frame, width, height, smooth_r, smooth_g, smooth_b, 5);
       //  printf("Finished edge initialization.\n");
-      float *threshold5 = new float[num_vertices];
-      universe_s *u5 = new universe_s(num_vertices);
-      universe_s *dev_u5 = NULL;
-      cudaMalloc((void**)&threshold5, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u5, num_bytes);
-//      universe_s *u5 = segment_graph_s(num_vertices, num_edges_s, edges5, c, edges_remain5);
-      u5 = segment_graph_s(num_vertices, num_edges_s, edges5, c, edges_remain5, dev_u5, threshold5);
-      cudaMemcpy(u5, dev_u5, num_bytes, cudaMemcpyDeviceToHost);
+      segment_graph_s(num_vertices, num_edges_s, edges5, c, edges_remain5, dev_u5, threshold5);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u5->find(i-s_index), u5->rank(i-s_index), u5->size(i-s_index), u5->mst(i-s_index));
-//              gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges5, u5, c, 5, level, edges_remain5, num_edges, num_frame);            
-      delete[] edges5; delete u5; 
-      cudaFree(dev_u5); cudaFree(threshold5);
     }
     break;
     case 6: 
     {
-      edge *edges6 = new edge[num_edges_s];
-      //universe_s* u6 = new universe_s(num_frame * width * height);
       int s_index = 6 * num_vertices;
       int e_index = 7 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges6, num_frame, width, height, smooth_r, smooth_g, smooth_b, 6);
       //  printf("Finished edge initialization.\n");
-      float *threshold6 = new float[num_vertices];
-      universe_s *u6 = new universe_s(num_vertices);
-      universe_s *dev_u6 = NULL;
-      cudaMalloc((void**)&threshold6, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u6, num_bytes);
-//      universe_s *u6 = segment_graph_s(num_vertices, num_edges_s, edges6, c, edges_remain6);
       segment_graph_s(num_vertices, num_edges_s, edges6, c, edges_remain6, dev_u6, threshold6);
-      cudaMemcpy(u6, dev_u6, num_bytes, cudaMemcpyDeviceToHost);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u6->find(i-s_index), u6->rank(i-s_index), u6->size(i-s_index), u6->mst(i-s_index));
-//	      gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges6, u6, c, 6, level, edges_remain6, num_edges, num_frame);            
-      delete[] edges6; delete u6; 
-      cudaFree(dev_u6); cudaFree(threshold6);
     }
     break;
     case 7: 
     {
-      edge *edges7 = new edge[num_edges_s];
-      //universe_s* u7 = new universe_s(num_frame * width * height);
       int s_index = 7 * num_vertices;
       int e_index = 8 * num_vertices;
       //  printf("start and end index are %d and %d.\n", s_index, e_index);
       initialize_edges(edges7, num_frame, width, height, smooth_r, smooth_g, smooth_b, 7);
       //  printf("Finished edge initialization.\n");
-      float *threshold7 = new float[num_vertices];
-      universe_s *u7 = new universe_s(num_vertices);
-      universe_s *dev_u7 = NULL;
-      cudaMalloc((void**)&threshold7, num_bytes_threshold);
-      cudaMalloc((void**)&dev_u7, num_bytes);
-//      universe_s *u7 = segment_graph_s(num_vertices, num_edges_s, edges7, c, edges_remain7);
       segment_graph_s(num_vertices, num_edges_s, edges7, c, edges_remain7, dev_u7, threshold7);
-      cudaMemcpy(u7, dev_u7, num_bytes, cudaMemcpyDeviceToHost);
       //  printf("Finished unit graph segmentation.\n"); 
       for (int i = s_index; i < e_index; ++i) 
         mess->set_in_level(i, level, u7->find(i-s_index), u7->rank(i-s_index), u7->size(i-s_index), u7->mst(i-s_index));
-//	      gb(mess, smooth_r, smooth_g, smooth_b, width, height, edges7, u7, c, 7, level, edges_remain7, num_edges, num_frame);            
-      delete[] edges7; delete u7;
-      cudaFree(dev_u7); cudaFree(threshold7);
     }
     break;
     default: break;
@@ -321,38 +228,51 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	edges_remain->clear();
 	printf("Start segmenting graph in parallel.\n");
 
-	// ----- node number
-//  	int num_vertices = num_frame * width * height;
-	// ----- edge number for 1 unit which has 10 video clips
-//	int num_edges_plane = (width - 1) * (height - 1) * 2 + width * (height - 1) + (width - 1) * height;
-//        int num_edges_layer = (width - 2) * (height - 2) * 9 + (width - 2) * 2 * 6 + (height - 2) * 2 * 6 + 4 * 4;
-//        int num_edges = num_edges_plane * num_frame + num_edges_layer * (num_frame - 1);
-
-//	int num_elements = num_cores * num_frame;
-        int num_bytes = num_edges_s * sizeof(edge);
+        int num_vertices = num_frame * width * height;
+        int num_bytes = num_edges_s * sizeof(edge); // edge array size
+  	int num_bytes_th = num_vertices * sizeof(float); // threshold array size
+        int num_bytes_n = num_vertices * sizeof(uni_elt);
 	
 	int block_size = num_frame;
 	int grid_size = num_cores;
-	vector<edge>* dev_edges_remain0 = new vector<edge>(); 
-	vector<edge>* dev_edges_remain1 = new vector<edge>(); 
-        vector<edge>* dev_edges_remain2 = new vector<edge>();
-	vector<edge>* dev_edges_remain3 = new vector<edge>();  
-        vector<edge>* dev_edges_remain4 = new vector<edge>(); 
-        vector<edge>* dev_edges_remain5 = new vector<edge>(); 
-	vector<edge>* dev_edges_remain6 = new vector<edge>(); 
-	vector<edge>* dev_edges_remain7 = new vector<edge>();  
-	// cudaMalloc edge vectors 
-        cudaMalloc((void**)&dev_edges_remain0, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain1, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain2, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain3, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain4, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain5, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain6, num_bytes);
-        cudaMalloc((void**)&dev_edges_remain7, num_bytes);
-  	gb<<<grid_size,block_size>>>(mess, smooth_r, smooth_g, smooth_b, width, height, c, /*num_edges, num_frame,*/
-             dev_edges_remain0, dev_edges_remain1, dev_edges_remain2, dev_edges_remain3, dev_edges_remain4, dev_edges_remain5, 
-             dev_edges_remain6, dev_edges_remain7);
+	// initialize edges and remained edges array	
+	edge *d_edges_remain0 = NULL;  edge *d_edges0 = NULL;
+	edge *d_edges_remain1 = NULL;  edge *d_edges1 = NULL;
+	edge *d_edges_remain2 = NULL;  edge *d_edges2 = NULL;
+	edge *d_edges_remain3 = NULL;  edge *d_edges3 = NULL;
+	edge *d_edges_remain4 = NULL;  edge *d_edges4 = NULL;
+	edge *d_edges_remain5 = NULL;  edge *d_edges5 = NULL;
+	edge *d_edges_remain6 = NULL;  edge *d_edges6 = NULL;
+	edge *d_edges_remain7 = NULL;  edge *d_edges7 = NULL;
+	// cudaMalloc memory space for edge vectors 
+        cudaMalloc((void**)&d_edges_remain0, num_bytes);  cudaMalloc((void**)&d_edges0, num_bytes);
+        cudaMalloc((void**)&d_edges_remain1, num_bytes);  cudaMalloc((void**)&d_edges1, num_bytes);
+        cudaMalloc((void**)&d_edges_remain2, num_bytes);  cudaMalloc((void**)&d_edges2, num_bytes);
+        cudaMalloc((void**)&d_edges_remain3, num_bytes);  cudaMalloc((void**)&d_edges3, num_bytes);
+        cudaMalloc((void**)&d_edges_remain4, num_bytes);  cudaMalloc((void**)&d_edges4, num_bytes);
+        cudaMalloc((void**)&d_edges_remain5, num_bytes);  cudaMalloc((void**)&d_edges5, num_bytes);
+        cudaMalloc((void**)&d_edges_remain6, num_bytes);  cudaMalloc((void**)&d_edges6, num_bytes);
+        cudaMalloc((void**)&d_edges_remain7, num_bytes);  cudaMalloc((void**)&d_edges7, num_bytes);
+        // initialize threshold and node array 
+   	float *d_th0 = NULL;   	float *d_th1 = NULL;   	float *d_th2 = NULL;   	float *d_th3 = NULL;
+   	float *d_th4 = NULL;   	float *d_th5 = NULL;   	float *d_th6 = NULL;   	float *d_th7 = NULL;
+        universe_s *d_u0 = NULL; universe_s *d_u1 = NULL; universe_s *d_u2 = NULL; universe_s *d_u3 = NULL;
+        universe_s *d_u4 = NULL; universe_s *d_u5 = NULL; universe_s *d_u6 = NULL; universe_s *d_u7 = NULL;
+        // allocate memory space for threshold and node array 
+        cudaMalloc((void**)&d_th0, num_bytes_th); cudaMalloc((void**)&d_th1, num_bytes_th);
+        cudaMalloc((void**)&d_th2, num_bytes_th); cudaMalloc((void**)&d_th3, num_bytes_th);
+        cudaMalloc((void**)&d_th4, num_bytes_th); cudaMalloc((void**)&d_th5, num_bytes_th);
+        cudaMalloc((void**)&d_th6, num_bytes_th); cudaMalloc((void**)&d_th7, num_bytes_th);
+        cudaMalloc((void**)&d_u0, num_bytes_n); cudaMalloc((void**)&d_u1, num_bytes_n);
+        cudaMalloc((void**)&d_u2, num_bytes_n); cudaMalloc((void**)&d_u3, num_bytes_n);
+        cudaMalloc((void**)&d_u4, num_bytes_n); cudaMalloc((void**)&d_u5, num_bytes_n);
+        cudaMalloc((void**)&d_u6, num_bytes_n); cudaMalloc((void**)&d_u7, num_bytes_n);
+
+	gb<<<grid_size,block_size>>>(mess, smooth_r, smooth_g, smooth_b, width, height, c, 
+             d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3, d_edges_remain4, d_edges_remain5, 
+             d_edges_remain6, d_edges_remain7, d_edges0, d_edges1, d_edges2, d_edges3, d_edges4, d_edges5, 
+             d_edges6, d_edges7, d_th0, d_th1, d_th2, d_thd3, d_th4, d_th5, d_th6, d_th7, d_u0, d_u1, d_u2, 
+             d_u3, d_u4, d_u5, d_u6, d_u7);
   	
 	// output oversegmentation in level 0 of heirarchical system 
 /*        generate_output_s(path, num_frame, width, height, u0, num_vertices, 0); 
@@ -364,55 +284,39 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         generate_output_s(path, num_frame, width, height, u6, num_vertices, 6); 
         generate_output_s(path, num_frame, width, height, u7, num_vertices, 7); 
 */	// transfter edges to edges_remian for first level hierarchical segmentation	
-	vector<edge>* edges_remain0 = new vector<edge>(); 
-	vector<edge>* edges_remain1 = new vector<edge>(); 
-        vector<edge>* edges_remain2 = new vector<edge>();
-	vector<edge>* edges_remain3 = new vector<edge>();  
-        vector<edge>* edges_remain4 = new vector<edge>(); 
-        vector<edge>* edges_remain5 = new vector<edge>(); 
-	vector<edge>* edges_remain6 = new vector<edge>(); 
-	vector<edge>* edges_remain7 = new vector<edge>();  
-	// cudaMalloc edge vectors 
-        cudaMemcpy(edges_remain0, dev_edges_remain0, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain1, dev_edges_remain1, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain2, dev_edges_remain2, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain3, dev_edges_remain3, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain4, dev_edges_remain4, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain5, dev_edges_remain5, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain6, dev_edges_remain6, num_bytes, cudaMemcpyDeviceToHost);
-        cudaMemcpy(edges_remain7, dev_edges_remain7, num_bytes, cudaMemcpyDeviceToHost);
-       
- 	vector<edge>::iterator it;
-        for ( it = edges_remain0->begin() ; it < edges_remain0->end(); it++ )
-          edges_remain->push_back(*it); 
+	edge *edges_remain0 = new edge[num_edges_s];  cudaMemcpy(edges_remain0, d_edges_remain0, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain1 = new edge[num_edges_s];  cudaMemcpy(edges_remain1, d_edges_remain1, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain2 = new edge[num_edges_s];  cudaMemcpy(edges_remain2, d_edges_remain2, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain3 = new edge[num_edges_s];  cudaMemcpy(edges_remain3, d_edges_remain3, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain4 = new edge[num_edges_s];  cudaMemcpy(edges_remain5, d_edges_remain5, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain5 = new edge[num_edges_s];  cudaMemcpy(edges_remain4, d_edges_remain4, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain6 = new edge[num_edges_s];  cudaMemcpy(edges_remain6, d_edges_remain6, num_bytes, cudaMemcpyDeviceToHost);
+	edge *edges_remain7 = new edge[num_edges_s];  cudaMemcpy(edges_remain7, d_edges_remain7, num_bytes, cudaMemcpyDeviceToHost);
+	// collect remained edges which were not merged in first level graph-based segmentation
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain0[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain1[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain2[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain3[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain4[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain5[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain6[it]); 
+        for ( int it = 0; it < num_edges_s; it++ )
+          edges_remain->push_back(edges_remain7[it]); 
 
-        for ( it = edges_remain1->begin() ; it < edges_remain1->end(); it++ )
-          edges_remain->push_back(*it); 
-
-        for ( it = edges_remain2->begin() ; it < edges_remain2->end(); it++ )
-          edges_remain->push_back(*it); 
-
-        for ( it = edges_remain3->begin() ; it < edges_remain3->end(); it++ )
-          edges_remain->push_back(*it); 
-
-        for ( it = edges_remain4->begin() ; it < edges_remain4->end(); it++ )
-          edges_remain->push_back(*it); 
-
-        for ( it = edges_remain5->begin() ; it < edges_remain5->end(); it++ )
-          edges_remain->push_back(*it); 
-
-        for ( it = edges_remain6->begin() ; it < edges_remain6->end(); it++ )
-          edges_remain->push_back(*it); 
-
-        for ( it = edges_remain7->begin() ; it < edges_remain7->end(); it++ )
-          edges_remain->push_back(*it); 
-
+        
 	sort(edges_remain->begin(), edges_remain->end());
 	// clear temporary variables
-        delete edges_remain0; cudaFree(dev_edges_remain0); delete edges_remain1; cudaFree(dev_edges_remain1);
-        delete edges_remain2; cudaFree(dev_edges_remain2); delete edges_remain3; cudaFree(dev_edges_remain3);
-        delete edges_remain4; cudaFree(dev_edges_remain4); delete edges_remain5; cudaFree(dev_edges_remain5);
-        delete edges_remain6; cudaFree(dev_edges_remain6); delete edges_remain7; cudaFree(dev_edges_remain7);
+        delete edges_remain0; cudaFree(d_edges_remain0); delete edges_remain1; cudaFree(d_edges_remain1);
+        delete edges_remain2; cudaFree(d_edges_remain2); delete edges_remain3; cudaFree(d_edges_remain3);
+        delete edges_remain4; cudaFree(d_edges_remain4); delete edges_remain5; cudaFree(d_edges_remain5);
+        delete edges_remain6; cudaFree(d_edges_remain6); delete edges_remain7; cudaFree(d_edges_remain7);
 }
 
 /* Gaussian Smoothing */
@@ -543,6 +447,7 @@ void segment_image(char *path, image<rgb> *im[], int num_frame, float c,
 	edges_region[0] = new vector<edge>();
 	segment_graph(mess, edges_region[0], edges, c, width, height, 0,
                       smooth_r, smooth_g, smooth_b, num_frame/num_cores, path);
+
 	// optional merging small components
 /*	for (int i = 0; i < num_edges; i++) {
 		int a = mess->find_in_level(edges[i].a, 0);
