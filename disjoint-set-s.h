@@ -44,6 +44,7 @@ private:
   int num;
 };
 
+__host__ __device__  
 universe_s::universe_s(int elements) {
   elts = new uni_elt[elements];
   num = elements;

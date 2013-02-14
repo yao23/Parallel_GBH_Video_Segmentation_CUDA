@@ -42,10 +42,10 @@ class image {
   image<T> *copy() const;
   
   /* get the width of an image. */
-  int width() const { return w; }
+  __host__ __device__ int width() const { return w; }
   
   /* get the height of an image. */
-  int height() const { return h; }
+  __host__ __device__ int height() const { return h; }
   
   /* image data. */
   T *data;
