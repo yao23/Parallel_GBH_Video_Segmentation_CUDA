@@ -70,6 +70,12 @@ __host__ __device__ void quicksort(T a[], const int& leftarg, const int& rightar
   }
 }
 
+__host__ __device__ int back_push(edge *edges_remain[], edge *pedge, int cur_it) {
+  edges_remain[cur_it] = pedge;
+  ++cur_it;
+  return cur_it;
+}
+
 /*
  * Segment a graph
  *
@@ -82,11 +88,13 @@ __host__ __device__ void quicksort(T a[], const int& leftarg, const int& rightar
  */
 __host__ __device__
 /*universe_s **/void segment_graph_s(int num_vertices, int num_edges, edge *edges, 
-			float c, /*vector<edge>* edges_remain*/ edge *edges_remain,
+			float c, /*vector<edge>* edges_remain*/ edge *edges_remain[],
                         universe_s *u, float *threshold) { 
   // new vector containing remain edges
 //  edges_remain->clear();
   edges_remain = NULL;   
+  int cur_it = 0; // current available iterator
+
   // sort edges by weight
   quicksort<edge>(edges, 0, num_edges - 1);
 
@@ -109,11 +117,11 @@ __host__ __device__
       if ((pedge->w <= threshold[a]) &&
 	  (pedge->w <= threshold[b])) {
 	if (u->join(a, b, pedge->w) == 1)
-          edges_remain->push_back(*pedge);
+          cur_it = back_push(edges_remain, pedge, cur_it);
 	a = u->find(a);
 	threshold[a] = pedge->w + THRESHOLD(u->size(a), c);
       }
-      else edges_remain->push_back(*pedge);
+      else cur_it = back_push(edges_remain, pedge, cur_it);
     }
   }
 

@@ -248,7 +248,6 @@ int universe::find_in_level(int a, int level) {
 	return element;
 }
 
-__device__
 void universe::set_in_level(int a, int level, int x, int y, int z, float b) {
 	elts[a].p[level] = x;    
 	elts[a].rank = y;    
