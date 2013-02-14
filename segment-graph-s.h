@@ -82,10 +82,11 @@ __host__ __device__ void quicksort(T a[], const int& leftarg, const int& rightar
  */
 __host__ __device__
 /*universe_s **/void segment_graph_s(int num_vertices, int num_edges, edge *edges, 
-			float c, vector<edge>* edges_remain, universe_s *u,
-                        float *threshold) { 
+			float c, /*vector<edge>* edges_remain*/ edge *edges_remain,
+                        universe_s *u, float *threshold) { 
   // new vector containing remain edges
-  edges_remain->clear();
+//  edges_remain->clear();
+  edges_remain = NULL;   
   // sort edges by weight
   quicksort<edge>(edges, 0, num_edges - 1);
 
