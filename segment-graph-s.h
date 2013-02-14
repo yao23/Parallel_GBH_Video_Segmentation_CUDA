@@ -76,6 +76,56 @@ __host__ __device__ int back_push(edge *edges_remain[], edge *pedge, int cur_it)
   return cur_it;
 }
 
+template<class TYPE>
+void algo_mergesort(size_t n, TYPE array[], TYPE *temp = 0)
+{
+	TYPE *a2[2], *a, *b;
+	int curr, shift;
+
+	a2[0] = array;
+	a2[1] = temp? temp : new TYPE[n];
+	for (curr = 0, shift = 0; (1ul<<shift) < n; ++shift) {
+		a = a2[curr]; b = a2[1-curr];
+		if (shift == 0) {
+			TYPE *p = b, *i, *eb = a + n;
+			for (i = a; i < eb; i += 2) {
+				if (i == eb - 1) *p++ = *i;
+				else {
+					if (*(i+1) < *i) {
+						*p++ = *(i+1); *p++ = *i;
+					} else {
+						*p++ = *i; *p++ = *(i+1);
+					}
+				}
+			}
+		} else {
+			size_t i, step = 1ul<<shift;
+			for (i = 0; i < n; i += step<<1) {
+				TYPE *p, *j, *k, *ea, *eb;
+				if (n < i + step) {
+					ea = a + n; eb = a;
+				} else {
+					ea = a + i + step;
+					eb = a + (n < i + (step<<1)? n : i + (step<<1));
+				}
+				j = a + i; k = a + i + step; p = b + i;
+				while (j < ea && k < eb) {
+					if (*j < *k) *p++ = *j++;
+					else *p++ = *k++;
+				}
+				while (j < ea) *p++ = *j++;
+				while (k < eb) *p++ = *k++;
+			}
+		}
+		curr = 1 - curr;
+	}
+	if (curr == 1) {
+		TYPE *p = a2[0], *i = a2[1], *eb = array + n;
+		for (; p < eb; ++i) *p++ = *i;
+	}
+	if (temp == 0) delete[] a2[1];
+}
+
 /*
  * Segment a graph
  *
