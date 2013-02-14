@@ -52,7 +52,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 
 using namespace std;
 
-__constant__ edge *edges0 = new edge[num_edges_s];
+/*__constant__ edge *edges0 = new edge[num_edges_s];
 __constant__ edge *edges1 = new edge[num_edges_s];
 __constant__ edge *edges2 = new edge[num_edges_s];
 __constant__ edge *edges3 = new edge[num_edges_s];
@@ -60,7 +60,7 @@ __constant__ edge *edges4 = new edge[num_edges_s];
 __constant__ edge *edges5 = new edge[num_edges_s];
 __constant__ edge *edges6 = new edge[num_edges_s];
 __constant__ edge *edges7 = new edge[num_edges_s];
-
+*/
 /* Save Output for oversegmentation*/
 /*void generate_output_s(char *path, int num_frame, int width, int height,
                  universe_s *u, int num_vertices, int case_num) {
@@ -109,7 +109,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
   switch(case_num) {
     case 0: 
     {
-//      edge *edges0 = new edge[num_edges];
+      edge *edges0 = new edge[num_edges_s];
       //universe_s* u0 = new universe_s(num_frame * width * height);
       int s_index = 0;
       int e_index = num_vertices;
@@ -125,7 +125,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 1: 
     {
-//      edge *edges1 = new edge[num_edges];
+      edge *edges1 = new edge[num_edges_s];
       //universe_s* u1 = new universe_s(num_frame * width * height);
       int s_index = num_vertices;
       int e_index = 2 * num_vertices;
@@ -142,7 +142,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 2: 
     {
-//      edge *edges2 = new edge[num_edges];
+      edge *edges2 = new edge[num_edges_s];
       //universe_s* u2 = new universe_s(num_frame * width * height);
       int s_index = 2 * num_vertices;
       int e_index = 3 * num_vertices;
@@ -159,7 +159,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 3: 
     {
-//      edge *edges3 = new edge[num_edges];
+      edge *edges3 = new edge[num_edges_s];
       //universe_s* u3 = new universe_s(num_frame * width * height);
       int s_index = 3 * num_vertices;
       int e_index = 4 * num_vertices;
@@ -176,7 +176,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 4: 
     {
-//      edge *edges4 = new edge[num_edges];
+      edge *edges4 = new edge[num_edges_s];
       //universe_s* u4 = new universe_s(num_frame * width * height);
       int s_index = 4 * num_vertices;
       int e_index = 5 * num_vertices;
@@ -193,7 +193,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 5: 
     {
-//      edge *edges5 = new edge[num_edges];
+      edge *edges5 = new edge[num_edges_s];
       //universe_s* u5 = new universe_s(num_frame * width * height);
       int s_index = 5 * num_vertices;
       int e_index = 6 * num_vertices;
@@ -210,7 +210,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 6: 
     {
-//      edge *edges6 = new edge[num_edges];
+      edge *edges6 = new edge[num_edges_s];
       //universe_s* u6 = new universe_s(num_frame * width * height);
       int s_index = 6 * num_vertices;
       int e_index = 7 * num_vertices;
@@ -227,7 +227,7 @@ __global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smoot
     break;
     case 7: 
     {
-//      edge *edges7 = new edge[num_edges];
+      edge *edges7 = new edge[num_edges_s];
       //universe_s* u7 = new universe_s(num_frame * width * height);
       int s_index = 7 * num_vertices;
       int e_index = 8 * num_vertices;
