@@ -39,6 +39,25 @@ typedef struct {
 	int a, b;
 } edge;
 
+__host__ __device__
+float sqrt3(const float x)  
+{
+  union
+  {
+    int i;
+    float x;
+  } u;
+
+  u.x = x;
+  u.i = (1<<29) + (u.i >> 1) - (1<<22); 
+  return u.x;
+}
+
+__host__ __device__
+double inline square3(double n)
+{
+	return n*n;	
+}
 
 /* fill pixel level edges */
 __host__ __device__
@@ -51,10 +70,10 @@ void generate_edge(edge *e, image<float> *r_v, image<float> *g_v,
 
 	e->a = y_v * width + x_v + z_v * (width * height);
 	e->b = y_u * width + x_u + z_u * (width * height);
-	e->w = sqrt(
-			square(imRef(r_v, x_v, y_v) - imRef(r_u, x_u, y_u))
-					+ square(imRef(g_v, x_v, y_v) - imRef(g_u, x_u, y_u))
-					+ square(imRef(b_v, x_v, y_v) - imRef(b_u, x_u, y_u)));
+	e->w = sqrt3(
+			square3(imRef(r_v, x_v, y_v) - imRef(r_u, x_u, y_u))
+					+ square3(imRef(g_v, x_v, y_v) - imRef(g_u, x_u, y_u))
+					+ square3(imRef(b_v, x_v, y_v) - imRef(b_u, x_u, y_u)));
 
 }
 

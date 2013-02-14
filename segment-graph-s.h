@@ -38,6 +38,38 @@ bool operator<(const edge &a, const edge &b) {
   return a.w < b.w;
 }
 
+__host__ __device__
+bool operator>(const edge &a, const edge &b) {
+  return a.w > b.w;
+}
+
+template<class T>
+__host__ __device__ void quicksort(T a[], const int& leftarg, const int& rightarg)
+{
+  if (leftarg < rightarg) {
+
+    T pivotvalue = a[leftarg];
+    int left = leftarg - 1;
+    int right = rightarg + 1;
+
+  for(;;) {
+
+    while (a[--right] > pivotvalue);
+    while (a[++left] < pivotvalue);
+
+    if (left >= right) break;
+
+    T temp = a[right];
+    a[right] = a[left];
+    a[left] = temp;
+  }
+
+  int pivot = right;
+  quicksort(a, leftarg, pivot);
+  quicksort(a, pivot + 1, rightarg);
+  }
+}
+
 /*
  * Segment a graph
  *
@@ -54,7 +86,7 @@ universe_s *segment_graph_s(int num_vertices, int num_edges, edge *edges,
   // new vector containing remain edges
   edges_remain->clear();
   // sort edges by weight
-  std::sort(edges, edges + num_edges);
+  quicksort<edge>(edges, 0, num_edges - 1);
 
   // make a disjoint-set forest
   universe_s *u = new universe_s(num_vertices);
