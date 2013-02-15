@@ -50,7 +50,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "edges-s.h"
 #include <cuda.h>
 #define num_cores 4 
-//#define num_edges_s 9568916 
 
 using namespace std;
 
@@ -89,11 +88,50 @@ void generate_output_s(char *path, int num_frame, int width, int height,
 /*
 __device__ void change4(int *x) { *x = 20121111; printf("In cuda1 change4, x is %d.----------------------------\n", *x);}
 */
-// process every image with graph-based segmentation
-__global__ void gb(/*image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],*/ float *smooth_r, float *smooth_g, float *smooth_b,
-        int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
-        universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3, int *er_num, /*int *x,*/ edge *edges0, edge *edges1, edge *edges2, 
-        edge *edges3) {
+
+// process edges initialization
+__global__ void gb1(float *smooth_r, float *smooth_g, float *smooth_b, int width, int height,  
+                      edge *edges0, edge *edges1, edge *edges2, edge *edges3) {
+  int case_num = blockIdx.x;
+  int num_frame = blockDim.x;// * 20;
+//      *x = 1111;
+//  printf("In cuda1 change, x is %d.---------------------------------------------------------------\n", *x); 
+
+  switch(case_num) {
+    case 0: 
+    {
+      initialize_edges_s(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
+      //  printf("Finished edge initialization.\n");
+    }
+    break;
+    case 1: 
+    {
+      initialize_edges_s(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
+      //  printf("Finished edge initialization.\n");
+    }
+    break;
+    case 2: 
+    {
+      initialize_edges_s(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
+      //  printf("Finished edge initialization.\n");
+    }
+    break;
+    case 3: 
+    {
+      initialize_edges_s(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
+      //  printf("Finished edge initialization.\n");
+    }
+    break;
+    default: break;
+  }
+//  printf("Finished edges-initialization.\n");
+}
+
+// process segment-graph for units
+__global__ void gb2(int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], 
+		    edge *edges_remain2[], edge *edges_remain3[], universe_s *u0, universe_s *u1, 
+		    universe_s *u2, universe_s *u3, int *er_num, edge *edges0, edge *edges1, edge *edges2, 
+        	    edge *edges3) {
   // er_num is the array to record edge_remain element number
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;// * 20;
@@ -108,55 +146,31 @@ __global__ void gb(/*image<float> *smooth_r[], image<float> *smooth_g[], image<f
   switch(case_num) {
     case 0: 
     {
-//      edge *edges0 = new edge[num_edges_s];
-      initialize_edges_s(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
-      //  printf("Finished edge initialization.\n");
       er_num[0] = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0);//, x);
       //  printf("Finished unit graph segmentation.\n"); 
-//      *x = 1; 
-//      er_num[0] = 15000;
     }
     break;
     case 1: 
     {
-//      edge *edges1 = new edge[num_edges_s];
-      initialize_edges_s(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
-      //  printf("Finished edge initialization.\n");
       er_num[1] = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1);//, x);
       //  printf("Finished unit graph segmentation.\n"); 
-//      *x = 11; 
-//      er_num[1] = 15000;
     }
     break;
     case 2: 
     {
-//      edge *edges2 = new edge[num_edges_s];
-      initialize_edges_s(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
-      //  printf("Finished edge initialization.\n");
       er_num[2] = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2);//, x);
       //  printf("Finished unit graph segmentation.\n"); 
-//      *x = 111; 
-//      er_num[2] = 15000;
     }
     break;
     case 3: 
     {
-//      edge *edges3 = new edge[num_edges_s];
-      initialize_edges_s(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
-      //  printf("Finished edge initialization.\n");
       er_num[3] = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3);//, x);
       //  printf("Finished unit graph segmentation.\n");
-//      *x = 1111; 
-//      er_num[3] = 15000;
     }
     break;
-    default: 
-      /**x = 1111;*/ break;
+    default: break;
   }
-//  printf("Finished mess assignment.\n");
-//  *x = 5;
-//  printf("In cuda1 change, x1 is %d.---------------------------------------------------------------\n", *x); 
-//  change4(x);
+//  printf("Finished segment-graph for units.\n");
 }
 /*
 __global__ void change(int *x) {
@@ -244,7 +258,9 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	universe_s *u2 = new universe_s(num_vertices); universe_s *u3 = new universe_s(num_vertices);
         int num_bytes_n = sizeof(u0);
 	
-	// copy edges from cpu to gpu 
+	// copy edges from cpu to gpu
+	edge *edges0 = new edge[num_bytes]; edge *edges1 = new edge[num_bytes]; 
+	edge *edges2 = new edge[num_bytes]; edge *edges3 = new edge[num_bytes]; 
 	edge *d_edges0 = NULL; edge *d_edges1 = NULL; edge *d_edges2 = NULL; edge *d_edges3 = NULL;
    	cudaMalloc((void**)&d_edges0, num_bytes); cudaMalloc((void**)&d_edges1, num_bytes);
    	cudaMalloc((void**)&d_edges2, num_bytes); cudaMalloc((void**)&d_edges3, num_bytes);
@@ -311,11 +327,21 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         cudaMemcpy(d_smooth_b, t_smooth_b, num_smooth, cudaMemcpyHostToDevice);
 	
 	printf("Start segmenting graph in GPU.\n");
-	cudaError_t err, /*err2,*/ err3, err4;//
+	cudaError_t err, err2, err3, err4;
 	const char *err5;
-	gb<<<grid_size,block_size>>>(d_smooth_r, d_smooth_g, d_smooth_b, width, height, c, 
-             d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
-             d_u0, d_u1, d_u2, d_u3, d_er_num, /*d_x,*/ d_edges0, d_edges1, d_edges2, d_edges3);
+	gb1<<<grid_size,block_size>>>(d_smooth_r, d_smooth_g, d_smooth_b, width, height,  
+                                      d_edges0, d_edges1, d_edges2, d_edges3);
+	// transfter edges from gpu to cpu for next unit-segment-graph
+        err2 = cudaMemcpy(edges0, d_edges0, num_bytes, cudaMemcpyDeviceToHost);
+	printf("Error2: %s\n", cudaGetErrorString(err2) );
+	cudaMemcpy(edges1, d_edges1, num_bytes, cudaMemcpyDeviceToHost);
+	cudaMemcpy(edges2, d_edges2, num_bytes, cudaMemcpyDeviceToHost);
+	cudaMemcpy(edges3, d_edges3, num_bytes, cudaMemcpyDeviceToHost);
+
+        cudaMemcpy(d_edges0, edges0, num_bytes, cudaMemcpyHostToDevice); cudaMemcpy(d_edges1, edges1, num_bytes, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_edges2, edges2, num_bytes, cudaMemcpyHostToDevice); cudaMemcpy(d_edges3, edges3, num_bytes, cudaMemcpyHostToDevice);
+	gb2<<<grid_size,block_size>>>(width, height, c, d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
+                                      d_u0, d_u1, d_u2, d_u3, d_er_num, d_edges0, d_edges1, d_edges2, d_edges3);
 // 	check_cuda_errors(__FILE__, __LINE__); 
 	err = cudaGetLastError();
 	printf("Error: %s\n", cudaGetErrorString(err) );
