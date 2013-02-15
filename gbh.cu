@@ -53,7 +53,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 using namespace std;
 
 /* Save Output for oversegmentation*/
-/*void generate_output_s(char *path, int num_frame, int width, int height,
+void generate_output_s(char *path, int num_frame, int width, int height,
                  universe_s *u, int num_vertices, int case_num) {
 
 	int offset = case_num * num_frame; 
@@ -84,12 +84,11 @@ using namespace std;
         delete[] colors;
         delete[] output;
 }
-*/
+
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
-        edge *edges0, edge *edges1, edge *edges2, edge *edges3,/* float *threshold0, float *threshold1,
-        float *threshold2, float *threshold3,*/ universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
+        universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;
   // ----- node number
@@ -97,6 +96,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
   switch(case_num) {
     case 0: 
     {
+      edge *edges0 = new edge[num_edges_s];
       initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
       segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0);//, threshold0);
@@ -105,6 +105,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     break;
     case 1: 
     {
+      edge *edges1 = new edge[num_edges_s];
       initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
       segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1);//, threshold1);
@@ -113,6 +114,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     break;
     case 2: 
     {
+      edge *edges2 = new edge[num_edges_s];
       initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
       segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2);//, threshold2);
@@ -121,6 +123,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     break;
     case 3: 
     {
+      edge *edges3 = new edge[num_edges_s];
       initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
       segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3);//, threshold3);
@@ -141,35 +144,30 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 
         int num_vertices = num_frame * width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
-//  	int num_bytes_th = num_vertices * sizeof(float); // threshold array size
         int num_bytes_n = num_vertices * sizeof(uni_elt);
 	
 	int block_size = num_frame;
 	int grid_size = num_cores;
 	// initialize edges and remained edges array	
-	edge **d_edges_remain0 = NULL;  edge *d_edges0 = NULL;
-	edge **d_edges_remain1 = NULL;  edge *d_edges1 = NULL;
-	edge **d_edges_remain2 = NULL;  edge *d_edges2 = NULL;
-	edge **d_edges_remain3 = NULL;  edge *d_edges3 = NULL;
+	edge **d_edges_remain0 = NULL; 
+	edge **d_edges_remain1 = NULL; 
+	edge **d_edges_remain2 = NULL; 
+	edge **d_edges_remain3 = NULL; 
 	// cudaMalloc memory space for edge vectors 
-        cudaMalloc((void**)&d_edges_remain0, num_bytes);  cudaMalloc((void**)&d_edges0, num_bytes);
-        cudaMalloc((void**)&d_edges_remain1, num_bytes);  cudaMalloc((void**)&d_edges1, num_bytes);
-        cudaMalloc((void**)&d_edges_remain2, num_bytes);  cudaMalloc((void**)&d_edges2, num_bytes);
-        cudaMalloc((void**)&d_edges_remain3, num_bytes);  cudaMalloc((void**)&d_edges3, num_bytes);
-        // initialize threshold and node array 
-//   	float *d_th0 = NULL;   	float *d_th1 = NULL;   	float *d_th2 = NULL;   	float *d_th3 = NULL;
+        cudaMalloc((void**)&d_edges_remain0, num_bytes);
+        cudaMalloc((void**)&d_edges_remain1, num_bytes);
+        cudaMalloc((void**)&d_edges_remain2, num_bytes);
+        cudaMalloc((void**)&d_edges_remain3, num_bytes);
+        // initialize node array 
         universe_s *d_u0 = new universe_s(num_vertices); universe_s *d_u1 = new universe_s(num_vertices); 
 	universe_s *d_u2 = new universe_s(num_vertices); universe_s *d_u3 = new universe_s(num_vertices);
-        // allocate memory space for threshold and node array 
-//        cudaMalloc((void**)&d_th0, num_bytes_th); cudaMalloc((void**)&d_th1, num_bytes_th);
-//        cudaMalloc((void**)&d_th2, num_bytes_th); cudaMalloc((void**)&d_th3, num_bytes_th);
+        // allocate memory space for node array 
         cudaMalloc((void**)&d_u0, num_bytes_n); cudaMalloc((void**)&d_u1, num_bytes_n);
         cudaMalloc((void**)&d_u2, num_bytes_n); cudaMalloc((void**)&d_u3, num_bytes_n);
         
 	gb<<<grid_size,block_size>>>(smooth_r, smooth_g, smooth_b, width, height, c, 
              d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
-             d_edges0, d_edges1, d_edges2, d_edges3,/* d_th0, d_th1, d_th2, d_th3,*/ d_u0, d_u1, d_u2, 
-             d_u3);
+             d_u0, d_u1, d_u2, d_u3);
   	
         universe_s *u0 = new universe_s(num_vertices); universe_s *u1 = new universe_s(num_vertices); 
 	universe_s *u2 = new universe_s(num_vertices); universe_s *u3 = new universe_s(num_vertices);
@@ -185,11 +183,11 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
           mess->set_in_level(i, level, u3->find(i-3*num_vertices), u3->rank(i-3*num_vertices), u3->size(i-3*num_vertices), u3->mst(i-3*num_vertices));
         
 	// output oversegmentation in level 0 of heirarchical system 
-/*        generate_output_s(path, num_frame, width, height, u0, num_vertices, 0); 
+        generate_output_s(path, num_frame, width, height, u0, num_vertices, 0); 
         generate_output_s(path, num_frame, width, height, u1, num_vertices, 1); 
         generate_output_s(path, num_frame, width, height, u2, num_vertices, 2); 
         generate_output_s(path, num_frame, width, height, u3, num_vertices, 3); 
-        generate_output_s(path, num_frame, width, height, u4, num_vertices, 4); 
+/*        generate_output_s(path, num_frame, width, height, u4, num_vertices, 4); 
         generate_output_s(path, num_frame, width, height, u5, num_vertices, 5); 
         generate_output_s(path, num_frame, width, height, u6, num_vertices, 6); 
         generate_output_s(path, num_frame, width, height, u7, num_vertices, 7); 
@@ -212,7 +210,6 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	// clear temporary variables
         delete edges_remain0; cudaFree(d_edges_remain0); delete edges_remain1; cudaFree(d_edges_remain1);
         delete edges_remain2; cudaFree(d_edges_remain2); delete edges_remain3; cudaFree(d_edges_remain3);
-//       	cudaFree(d_th0); cudaFree(d_th1); cudaFree(d_th2); cudaFree(d_th3);
 	cudaFree(d_u0); cudaFree(d_u1); cudaFree(d_u2); cudaFree(d_u3);
 }
 
@@ -273,7 +270,7 @@ void generate_output(char *path, int num_frame, int width, int height,
 	for (int k = 0; k <= level_total; k++) {
 		for (int i = 0; i < num_frame; i++) {
 			// output 1 higher level than them in GBH and replace k with k+1
-			snprintf(savepath, 1023, "%s/%02d/%05d.ppm", path, k, i + 1);
+			snprintf(savepath, 1023, "%s/%02d/%05d.ppm", path, k+1, i + 1);
 			output[i] = new image<rgb>(width, height);
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
@@ -474,7 +471,7 @@ int main(int argc, char **argv) {
 			status = -1;
 		}
 	}
-	for (int i = 0; i <= hie_num; i++) {
+	for (int i = 0; i <= (hie_num+1); i++) {
   		snprintf(savepath,1023,"%s/%02d",output_path,i);
 		if (stat(savepath, &st) != 0) {
 			/* Directory does not exist */
