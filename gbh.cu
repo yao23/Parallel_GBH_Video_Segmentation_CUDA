@@ -88,8 +88,8 @@ using namespace std;
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
-        edge *edges0, edge *edges1, edge *edges2, edge *edges3, float *threshold0, float *threshold1,
-        float *threshold2, float *threshold3, universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
+        edge *edges0, edge *edges1, edge *edges2, edge *edges3,/* float *threshold0, float *threshold1,
+        float *threshold2, float *threshold3,*/ universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;
   // ----- node number
@@ -99,7 +99,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     {
       initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0, threshold0);
+      segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0);//, threshold0);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -107,7 +107,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     {
       initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1, threshold1);
+      segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1);//, threshold1);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -115,7 +115,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     {
       initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2, threshold2);
+      segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2);//, threshold2);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -123,7 +123,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     {
       initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3, threshold3);
+      segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3);//, threshold3);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -141,7 +141,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 
         int num_vertices = num_frame * width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
-  	int num_bytes_th = num_vertices * sizeof(float); // threshold array size
+//  	int num_bytes_th = num_vertices * sizeof(float); // threshold array size
         int num_bytes_n = num_vertices * sizeof(uni_elt);
 	
 	int block_size = num_frame;
@@ -157,18 +157,18 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         cudaMalloc((void**)&d_edges_remain2, num_bytes);  cudaMalloc((void**)&d_edges2, num_bytes);
         cudaMalloc((void**)&d_edges_remain3, num_bytes);  cudaMalloc((void**)&d_edges3, num_bytes);
         // initialize threshold and node array 
-   	float *d_th0 = NULL;   	float *d_th1 = NULL;   	float *d_th2 = NULL;   	float *d_th3 = NULL;
+//   	float *d_th0 = NULL;   	float *d_th1 = NULL;   	float *d_th2 = NULL;   	float *d_th3 = NULL;
         universe_s *d_u0 = new universe_s(num_vertices); universe_s *d_u1 = new universe_s(num_vertices); 
 	universe_s *d_u2 = new universe_s(num_vertices); universe_s *d_u3 = new universe_s(num_vertices);
         // allocate memory space for threshold and node array 
-        cudaMalloc((void**)&d_th0, num_bytes_th); cudaMalloc((void**)&d_th1, num_bytes_th);
-        cudaMalloc((void**)&d_th2, num_bytes_th); cudaMalloc((void**)&d_th3, num_bytes_th);
+//        cudaMalloc((void**)&d_th0, num_bytes_th); cudaMalloc((void**)&d_th1, num_bytes_th);
+//        cudaMalloc((void**)&d_th2, num_bytes_th); cudaMalloc((void**)&d_th3, num_bytes_th);
         cudaMalloc((void**)&d_u0, num_bytes_n); cudaMalloc((void**)&d_u1, num_bytes_n);
         cudaMalloc((void**)&d_u2, num_bytes_n); cudaMalloc((void**)&d_u3, num_bytes_n);
         
 	gb<<<grid_size,block_size>>>(smooth_r, smooth_g, smooth_b, width, height, c, 
              d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
-             d_edges0, d_edges1, d_edges2, d_edges3, d_th0, d_th1, d_th2, d_th3, d_u0, d_u1, d_u2, 
+             d_edges0, d_edges1, d_edges2, d_edges3,/* d_th0, d_th1, d_th2, d_th3,*/ d_u0, d_u1, d_u2, 
              d_u3);
   	
         universe_s *u0 = new universe_s(num_vertices); universe_s *u1 = new universe_s(num_vertices); 
@@ -212,7 +212,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	// clear temporary variables
         delete edges_remain0; cudaFree(d_edges_remain0); delete edges_remain1; cudaFree(d_edges_remain1);
         delete edges_remain2; cudaFree(d_edges_remain2); delete edges_remain3; cudaFree(d_edges_remain3);
-       	cudaFree(d_th0); cudaFree(d_th1); cudaFree(d_th2); cudaFree(d_th3);
+//       	cudaFree(d_th0); cudaFree(d_th1); cudaFree(d_th2); cudaFree(d_th3);
 	cudaFree(d_u0); cudaFree(d_u1); cudaFree(d_u2); cudaFree(d_u3);
 }
 

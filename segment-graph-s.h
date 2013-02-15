@@ -76,7 +76,7 @@ __host__ __device__ int back_push(edge *edges_remain[], edge *pedge, int cur_it)
 __host__ __device__
 /*universe_s **/void segment_graph_s(int num_vertices, int num_edges, edge *edges, 
 			float c, /*vector<edge>* edges_remain*/ edge *edges_remain[],
-                        universe_s *u, float *threshold) { 
+                        universe_s *u/*, float *threshold*/) { 
   // new vector containing remain edges
 //  edges_remain->clear();
   edges_remain = NULL;   
@@ -89,7 +89,7 @@ __host__ __device__
 //  universe_s *u = new universe_s(num_vertices);
 
   // init thresholds
-//  float *threshold = new float[num_vertices];
+  float *threshold = new float[num_vertices];
   for (int i = 0; i < num_vertices; i++)
     threshold[i] = THRESHOLD(1,c);
 
@@ -113,7 +113,7 @@ __host__ __device__
   }
 
   // free up
-//  delete threshold;
+  delete threshold;
 //  return u;
 }
 

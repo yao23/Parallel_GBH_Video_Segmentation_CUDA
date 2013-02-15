@@ -39,10 +39,6 @@ typedef struct {
 	int a, b;
 } edge;
 
-typedef struct {
-  edge *edges;
-} Edges;
-
 __host__ __device__
 float sqrt3(const float x)  
 {
