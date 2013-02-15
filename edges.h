@@ -100,7 +100,6 @@ void initialize_edges(edge *edges, int num_frame, int width, int height,
 		image<float> *smooth_r[], image<float> *smooth_g[],
 		image<float> *smooth_b[], int case_num) {
         int offset = case_num * num_frame;
-//        int e_index = (case_num + 1) * num_frame;
         
 	int num_edges = 0;
 	for (int z = 0; z < num_frame; z++) {
