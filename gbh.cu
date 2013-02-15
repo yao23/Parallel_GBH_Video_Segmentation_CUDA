@@ -28,10 +28,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include <sys/types.h>
 #include "image.h"
 #include "pnmfile.h"
-//#include "segment-image-multi.h"
 #include "disjoint-set.h"
 
-#include <iostream> // from segment-image-multi.h
+// from segment-image-multi.h
+#include <iostream> 
 #include <fstream>
 #include <vector>
 #include <unistd.h>
@@ -42,13 +42,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "disjoint-set.h"
 #include "segment-graph-multi.h"
 
-#include <algorithm> // from segment-graph-multi.h
+// from segment-graph-multi.h
+#include <algorithm> 
 #include <cmath>
 #include "disjoint-set-s.h"
 #include "segment-graph-s.h"
 
 #define num_cores 4 
-#define num_edges_s 9568916 
+#define num_edges_s 153600 
 
 using namespace std;
 
@@ -85,6 +86,62 @@ void generate_output_s(char *path, int num_frame, int width, int height,
         delete[] output;
 }
 
+__device__ float sqrt2(const float x){
+  union
+  {
+    int i;
+    float x;
+  } u;
+  
+  u.x = x;
+  u.i = (1<<29) + (u.i >> 1) - (1<<22);
+  return u.x;
+}
+ 
+__device__ float inline square2(float n) { return n*n; }
+
+// dissimilarity measure between pixels
+__device__ float diff_s(image<float> *r, image<float> *g, image<float> *b,
+                         int x1, int y1, int x2, int y2) { 
+  return sqrt2(square2(imRef(r, x1, y1)-imRef(r, x2, y2)) +
+              square2(imRef(g, x1, y1)-imRef(g, x2, y2)) +
+               square2(imRef(b, x1, y1)-imRef(b, x2, y2)));
+} 
+
+__device__ int initialize_edges_s(edge *edges, int width, int height, 
+                        image<float> *smooth_r, image<float> *smooth_g, image<float> *smooth_b){
+  int num = 0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      if (x < width-1) {
+        edges[num].a = y * width + x;
+        edges[num].b = y * width + (x+1);
+        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x+1, y);
+        num++;
+      }
+      if (y < height-1) {
+        edges[num].a = y * width + x;
+        edges[num].b = (y+1) * width + x;
+        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x, y+1);
+        num++;
+      }
+      if ((x < width-1) && (y < height-1)) {
+        edges[num].a = y * width + x;
+        edges[num].b = (y+1) * width + (x+1);
+        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x+1, y+1);
+        num++;
+      }
+      if ((x < width-1) && (y > 0)) {
+        edges[num].a = y * width + x;
+        edges[num].b = (y-1) * width + (x+1);
+        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x+1, y-1);
+        num++;
+      }
+    }
+  }
+  return num;
+}
+
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
@@ -97,37 +154,41 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
   switch(case_num) {
     case 0: 
     {
+      int num_es = 0; // edges number
       edge *edges0 = new edge[num_edges_s];
-      initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
+      num_es = initialize_edges_s(edges0, width, height, smooth_r[0], smooth_g[0], smooth_b[0]);
       //  printf("Finished edge initialization.\n");
-      er_num[0] = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0);
+      er_num[0] = segment_graph_s(num_vertices, num_es, edges0, c, edges_remain0, u0);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
     case 1: 
     {
+      int num_es = 0; // edges number
       edge *edges1 = new edge[num_edges_s];
-      initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
+      num_es = initialize_edges_s(edges1, width, height, smooth_r[1], smooth_g[1], smooth_b[1]);
       //  printf("Finished edge initialization.\n");
-      er_num[1] = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1);
+      er_num[1] = segment_graph_s(num_vertices, num_es, edges1, c, edges_remain1, u1);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
     case 2: 
     {
+      int num_es = 0; // edges number
       edge *edges2 = new edge[num_edges_s];
-      initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
+      num_es = initialize_edges_s(edges2, width, height, smooth_r[2], smooth_g[2], smooth_b[2]);
       //  printf("Finished edge initialization.\n");
-      er_num[2] = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2);
+      er_num[2] = segment_graph_s(num_vertices, num_es, edges2, c, edges_remain2, u2);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
     case 3: 
     {
+      int num_es = 0; // edges number
       edge *edges3 = new edge[num_edges_s];
-      initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
+      num_es = initialize_edges_s(edges3, width, height, smooth_r[3], smooth_g[3], smooth_b[3]);
       //  printf("Finished edge initialization.\n");
-      er_num[3] = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3);
+      er_num[3] = segment_graph_s(num_vertices, num_es, edges3, c, edges_remain3, u3);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -144,7 +205,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	printf("Start segmenting graph in parallel.\n");
 
 	int er_num[4] = {0}; // edegs_remain elements number
-        int num_vertices = num_frame * width * height;
+        int num_vertices = width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
         int num_bytes_n = num_vertices * sizeof(uni_elt);
 	
