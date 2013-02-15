@@ -133,7 +133,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
 }
 
 /* pixel level minimum spanning tree merge */
-void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, float c, int width, int height, int level,
+void segment_graph(universe *mess, vector<edge>* edges_remain, Edge edges, float c, int width, int height, int level,
                 image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[], int num_frame, char *path) {
 	// new vector containing remain edges
 	edges_remain->clear();
@@ -326,7 +326,9 @@ void segment_image(char *path, image<rgb> *im[], int num_frame, float c,
 
 	// step 3 -- build edges
 	printf("start build edges\n");
-	edge* edges = new edge[num_edges];
+//	edge* edges = new edge[num_edges];
+        Edge edges;
+        edges.edges = new edge[num_edges];
 	initialize_edges(edges, num_frame, width, height, smooth_r, smooth_g,
 			smooth_b, 0);
 	printf("end build edges\n");
