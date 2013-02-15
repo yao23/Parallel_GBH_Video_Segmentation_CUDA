@@ -97,8 +97,8 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
   // er_num is the array to record edge_remain element number
   int case_num = blockIdx.x;
   int num_frame = blockDim.x * 20;
-//      *x = 1111;
-//  printf("In cuda1 change, x is %d.---------------------------------------------------------------\n", *x); 
+      *x = 1111;
+  printf("In cuda1 change, x is %d.---------------------------------------------------------------\n", *x); 
   // ----- node number
   int num_vertices = num_frame * width * height;
   // ----- edge number
@@ -197,14 +197,15 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 //	printf("-----------------The third smooth_r address is %p\n",(void*)&(smooth_r[40]));	
 //	printf("-----------------The fourth smooth_r address is %p\n",(void*)&(smooth_r[60]));	
 //	printf("width is %d and height is %d.\n", width, height);
-	int x = 20; // test whether or not execute segment-graph-s function
-	printf("-----------------------------------------------------Before cuda1 change, x is %d.\n", x); 
+	int *x = (int*)malloc(sizeof(int)); // *x = 20; // test whether or not execute segment-graph-s function
+	*x = 20;
+//	printf("-----------------------------------------------------Before cuda1 change, x is %d.\n", *x); 
 	int *d_x;
      	cudaMalloc((void**)&d_x, sizeof(int));
-	cudaMemcpy(d_x, &x, sizeof(int), cudaMemcpyHostToDevice);   
-        change<<<4,20>>>(d_x);
-	cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);  cudaFree(d_x); 
-	printf("-----------------------------------------------------After cuda2 change, x is %d.\n", x); 
+	cudaMemcpy(d_x, x, sizeof(int), cudaMemcpyHostToDevice);   
+//        change<<<4,20>>>(d_x);
+//	cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);  cudaFree(d_x); 
+//	printf("-----------------------------------------------------After cuda2 change, x is %d.\n", x); 
  
 //     	cudaMalloc((void**)&d_x, sizeof(int));
 //        change2<<<4,20>>>(d_x);
@@ -296,10 +297,10 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	printf("Error: %s\n", cudaGetErrorString(err) );
 	
 	printf("End segmenting graph in GPU.\n");
-	err2 = cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);   
+	err2 = cudaMemcpy(x, d_x, sizeof(int), cudaMemcpyDeviceToHost);   
 	printf("Error2: %s\n", cudaGetErrorString(err2) );
 //	cudaMemcpyFromSymbol(&x, "d_x", sizeof(int), 0, cudaMemcpyDeviceToHost);
-	printf("-----------------------------------------------------After cuda1 change, x is %d.\n", x); cudaFree(d_x);
+	printf("-----------------------------------------------------After cuda1 change, x is %d.\n", *x); cudaFree(d_x);
 	// copy smooth_r, smooth_g, smooth_b back to cpu from gpu
 	cudaMemcpy(d_smooth_r, smooth_r, num_frame*num_cores*sizeof(image<float>*), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_smooth_g, smooth_g, num_frame*num_cores*sizeof(image<float>*), cudaMemcpyHostToDevice);
@@ -355,10 +356,10 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         delete edges_remain0; cudaFree(d_edges_remain0); delete edges_remain1; cudaFree(d_edges_remain1);
         delete edges_remain2; cudaFree(d_edges_remain2); delete edges_remain3; cudaFree(d_edges_remain3);
 	cudaFree(d_u0); cudaFree(d_u1); cudaFree(d_u2); cudaFree(d_u3);
-	cudaFree(d_er_num); 
+	cudaFree(d_er_num);  
         cudaFree(d_smooth_r); cudaFree(d_smooth_g); cudaFree(d_smooth_b);
 //	cudaFree(d_width); cudaFree(d_height); cudaFree(d_c);
-	cudaFree(d_edges0); cudaFree(d_edges1); cudaFree(d_edges2); cudaFree(d_edges3);
+	cudaFree(d_edges0); cudaFree(d_edges1); cudaFree(d_edges2); cudaFree(d_edges3); free(x);
 }
 
 /* Gaussian Smoothing */
