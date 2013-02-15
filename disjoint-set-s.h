@@ -32,8 +32,8 @@ class universe_s {
 public:
   universe_s(int elements);
   ~universe_s();
-  int find(int x);  
-  int join(int x, int y, float mst);
+  __host__ __device__ int find(int x);  
+  __host__ __device__ int join(int x, int y, float mst);
   __host__ __device__ int size(int x) const { return elts[x].size; }
   __host__ __device__ int rank(int x) const { return elts[x].rank; }
   __host__ __device__ float mst(int x) const { return elts[x].mst; }

@@ -39,6 +39,10 @@ typedef struct {
 	int a, b;
 } edge;
 
+typedef struct {
+  edge *edges;
+} Edges;
+
 __host__ __device__
 float sqrt3(const float x)  
 {
@@ -54,7 +58,7 @@ float sqrt3(const float x)
 }
 
 __host__ __device__
-double inline square3(double n)
+float inline square3(float n)
 {
 	return n*n;	
 }
