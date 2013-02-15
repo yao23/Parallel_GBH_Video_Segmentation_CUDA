@@ -51,7 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 //#include "edges-s.h"
 #include <cuda.h>
 #define num_cores 4 
-#define num_smooth_s 12288000
+#define num_smooth_s 3072000 //12288000
 
 using namespace std;
 
@@ -524,7 +524,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         int num_vertices = num_frame * width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
 	// smooth_r, smooth_g, smooth_b size
-	int num_smooth = num_cores * num_vertices * sizeof(float);
+	int num_smooth = num_cores * num_vertices;// * sizeof(float);
 
 	int block_size = num_frame; //ThreadsPerBlock
 	int grid_size = num_cores; //BlocksPerGrid
@@ -567,12 +567,12 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	cudaMemcpy(d_u2, u2, num_bytes_n, cudaMemcpyHostToDevice); cudaMemcpy(d_u3, u3, num_bytes_n, cudaMemcpyHostToDevice);
 
         // allocate gpu space for smooth_r, smooth_g, smooth_b 
-	float* d_smooth_r; cudaMalloc((void**)&d_smooth_r, num_smooth);
-	float* d_smooth_g; cudaMalloc((void**)&d_smooth_g, num_smooth);
-	float* d_smooth_b; cudaMalloc((void**)&d_smooth_b, num_smooth);
-	float* t_smooth_r = (float*)malloc(num_smooth);//new float[num_smooth];
-	float* t_smooth_g = (float*)malloc(num_smooth);//new float[num_smooth];
-	float* t_smooth_b = (float*)malloc(num_smooth);//new float[num_smooth];
+//	float* d_smooth_r; cudaMalloc((void**)&d_smooth_r, num_smooth);
+//	float* d_smooth_g; cudaMalloc((void**)&d_smooth_g, num_smooth);
+//	float* d_smooth_b; cudaMalloc((void**)&d_smooth_b, num_smooth);
+	float* t_smooth_r = new float[num_smooth];//(float*)malloc(num_smooth);
+	float* t_smooth_g = new float[num_smooth];//(float*)malloc(num_smooth);
+	float* t_smooth_b = new float[num_smooth];//(float*)malloc(num_smooth);
 
 	printf("begin to read image data.\n");	
 	int tindex = 0;
@@ -690,8 +690,8 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	cudaFree(d_er_num);  
 //        cudaFree(d_smooth_r); cudaFree(d_smooth_g); cudaFree(d_smooth_b);
 	cudaFree(d_edges0); cudaFree(d_edges1); cudaFree(d_edges2); cudaFree(d_edges3); 
-//	delete t_smooth_r; delete t_smooth_g; delete t_smooth_b; 
-	free(t_smooth_r); free(t_smooth_g); free(t_smooth_b); 
+	delete t_smooth_r; delete t_smooth_g; delete t_smooth_b; 
+//	free(t_smooth_r); free(t_smooth_g); free(t_smooth_b); 
 }
 
 /* Gaussian Smoothing */
