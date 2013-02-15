@@ -76,10 +76,12 @@ __host__ __device__ int back_push(edge *edges_remain[], edge *pedge, int cur_it)
 __host__ __device__
 /*universe_s *voidi*/int segment_graph_s(int num_vertices, int num_edges, edge *edges, 
 			float c, /*vector<edge>* edges_remain*/ edge *edges_remain[],
-                        universe_s *u) { 
+                        universe_s *u, int *x) { 
+  *x = 1;
   // new vector containing remain edges
 //  edges_remain->clear();
-  edges_remain = NULL;   
+  for (int i = 0; i < num_edges; ++i)
+    edges_remain[i] = NULL;   
   int cur_it = 0; // current available iterator
 
   // sort edges by weight
