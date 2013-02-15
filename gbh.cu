@@ -47,17 +47,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "disjoint-set-s.h"
 #include "segment-graph-s.h"
 
-#include "histogram.h"
-//#include "edges-s.h"
+#include "edges-s.h"
 #include <cuda.h>
 #define num_cores 4 
-#define num_smooth_s 3072000 //12288000
 
 using namespace std;
-
-__constant__ float smooth_r1[num_smooth_s];
-__constant__ float smooth_g1[num_smooth_s];
-__constant__ float smooth_b1[num_smooth_s];
 
 /* Save Output for oversegmentation*/
 void generate_output_s(char *path, int num_frame, int width, int height,
@@ -95,320 +89,8 @@ void generate_output_s(char *path, int num_frame, int width, int height,
 __device__ void change4(int *x) { *x = 20121111; printf("In cuda1 change4, x is %d.----------------------------\n", *x);}
 */
 
-__host__ __device__
-float sqrt3(const float x)  
-{
-  union
-  {
-    int i;
-    float x;
-  } u;
-
-  u.x = x;
-  u.i = (1<<29) + (u.i >> 1) - (1<<22); 
-  return u.x;
-}
-
-__host__ __device__
-float inline square3(float n)
-{
-	return n*n;	
-}
-
-/* fill pixel level edges */
-__host__ __device__
-void generate_edge_s(edge *e, /*image<float> *r_v, image<float> *g_v,
-		image<float> *b_v, image<float> *r_u, image<float> *g_u,
-		image<float> *b_u,float *r, float *g, float *b,*/
-		int x_v, int y_v, int z_v, int x_u, int y_u,
-		int z_u, int width, int height, int offset) {
-//	width = r_v->width();
-//	height = r_v->height();
-//	printf("x_v is %d and y_v %d, x_u %d and y_u %d.\n", x_v, y_v, x_u, y_u); 
-//	printf("image data is %f.\n", r_v->imRef_s(r_v, x_v, y_v));
-	e->a = y_v * width + x_v + z_v * (width * height);
-	e->b = y_u * width + x_u + z_u * (width * height);
-/*	e->w = sqrt3(
-			square3(r_v->imRef_s(r_v, x_v, y_v) - r_u->imRef_s(r_u, x_u, y_u))
-					+ square3(g_v->imRef_s(g_v, x_v, y_v) - g_u->imRef_s(g_u, x_u, y_u))
-					+ square3(b_v->imRef_s(b_v, x_v, y_v) - b_u->imRef_s(b_u, x_u, y_u)));*/
-	int index1 = ((z_v + offset) * height + y_v) * width + x_v;
-	int index2 = ((z_u + offset) * height + y_u) * width + x_u;
-	e->w = sqrt3(square3(smooth_r1[index1] - smooth_r1[index2]) + square3(smooth_g1[index1] - smooth_g1[index2]) 
-                             + square3(smooth_b1[index1] - smooth_b1[index2]));
-
-}
-
-
-/* initialize pixel level edges */
-__host__ __device__
-void initialize_edges_s(edge *edges, int num_frame, int width, int height,
-		/*image<float> *smooth_r[], image<float> *smooth_g[],
-		image<float> *smooth_b[],*/ /*float *smooth_r, float *smooth_g, float *smooth_b,*/ int case_num) {
-        int offset = case_num * num_frame;
-        
-	int num_edges = 0;
-	for (int z = 0; z < num_frame; z++) {
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				// in the same plane
-				if (x < width - 1) {
-					generate_edge_s(&edges[num_edges],/* smooth_r1, smooth_g1, smooth_b1, */
-							x + 1, y, z, x, y, z, width, height, offset);
-					num_edges++;
-				}
-				if (y < height - 1) {
-					generate_edge_s(&edges[num_edges],/* smooth_r1, smooth_g1,
-							smooth_b1,*/ x, y + 1, z, x, y, z, width, height, offset);
-					num_edges++;
-				}
-				if ((x < width - 1) && (y < height - 1)) {
-					generate_edge_s(&edges[num_edges],/* smooth_r1, smooth_g1,
-							smooth_b1,*/ x + 1, y + 1, z, x, y, z, width, height, offset);
-					num_edges++;
-				}
-				if ((x < width - 1) && (y > 0)) {
-					generate_edge_s(&edges[num_edges],/* smooth_r1, smooth_g1,
-							smooth_b1,*/ x + 1, y - 1, z, x, y, z, width, height, offset);
-					num_edges++;
-				}
-
-				// to the previous plane
-				if (z > 0) {
-
-					generate_edge_s(&edges[num_edges],/* smooth_r1,
-					 		smooth_g1, smooth_b1,*/ x, y, z - 1, x, y, z, width, height, offset);
-					num_edges++;
-
-					if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-						// additional 8 edges
-						// x - 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y - 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x - 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x - 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y + 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-					} else if (x == 0 && y > 0 && y < height - 1) {
-						// additional 5 edges
-						// x, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y - 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x + 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y + 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-					} else if (x == width - 1 && y > 0 && y < height - 1) {
-						// additional 5 edges
-						// x - 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y - 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x - 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x - 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y + 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-					} else if (y == 0 && x > 0 && x < width - 1) {
-						// additional 5 edges
-						// x - 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x - 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y + 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-					} else if (y == height - 1 && x > 0 && x < width - 1) {
-						// additional 5 edges
-						// x - 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y - 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x - 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-					} else if (x == 0 && y == 0) {
-						// additional 3 edges
-						// x + 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y + 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-					} else if (x == 0 && y == height - 1) {
-						// additional 3 edges
-						// x, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y - 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x + 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x + 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x + 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-					} else if (x == width - 1 && y == 0) {
-						// additional 3 edges
-						// x - 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x - 1, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y + 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y + 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y + 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-					} else if (x == width - 1 && y == height - 1) {
-						// additional 3 edges
-						// x - 1, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y - 1, z - 1,
-								x, y, z, width, height, offset);
-						num_edges++;
-						// x, y - 1
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x, y - 1, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-						// x - 1, y
-						generate_edge_s(&edges[num_edges],/* smooth_r1,
-								smooth_g1, smooth_b1,*/ x - 1, y, z - 1, x, y,
-								z, width, height, offset);
-						num_edges++;
-					}
-
-				}
-			}
-		}
-	}
-}
-
-
 // process edges initialization
-__global__ void gb1(/*float *smooth_r, float *smooth_g, float *smooth_b,*/ int width, int height,  
+__global__ void gb1(float *smooth_r, float *smooth_g, float *smooth_b, int width, int height,  
                       edge *edges0, edge *edges1, edge *edges2, edge *edges3) {
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;// * 20;
@@ -418,25 +100,25 @@ __global__ void gb1(/*float *smooth_r, float *smooth_g, float *smooth_b,*/ int w
   switch(case_num) {
     case 0: 
     {
-      initialize_edges_s(edges0, num_frame, width, height,/* smooth_r1, smooth_g1, smooth_b1,*/ 0);
+      initialize_edges_s(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
     }
     break;
     case 1: 
     {
-      initialize_edges_s(edges1, num_frame, width, height,/* smooth_r1, smooth_g1, smooth_b1,*/ 1);
+      initialize_edges_s(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
     }
     break;
     case 2: 
     {
-      initialize_edges_s(edges2, num_frame, width, height,/* smooth_r1, smooth_g1, smooth_b1,*/ 2);
+      initialize_edges_s(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
     }
     break;
     case 3: 
     {
-      initialize_edges_s(edges3, num_frame, width, height,/* smooth_r1, smooth_g1, smooth_b1,*/ 3);
+      initialize_edges_s(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
     }
     break;
@@ -512,8 +194,6 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	printf("Start segmenting graph in parallel.\n");
        
 	int er_num[4] = {0}; // edegs_remain elements number
-//        for (int i = 0; i < 4; ++i)
-// 	  er_num[i] = i; 
         int *d_er_num = {0};
 
 	// ----- edge number
@@ -524,7 +204,8 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         int num_vertices = num_frame * width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
 	// smooth_r, smooth_g, smooth_b size
-	int num_smooth = num_cores * num_vertices;// * sizeof(float);
+	int num_smooth = num_cores * num_vertices; // allocate space for t_smooth_r/g/b in CPU
+	int num_smooth_s = num_cores * num_vertices * sizeof(float); // allocate space for d_smooth_r/g/b in GPU
 
 	int block_size = num_frame; //ThreadsPerBlock
 	int grid_size = num_cores; //BlocksPerGrid
@@ -559,22 +240,20 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	universe_s *d_u2 = new universe_s(num_vertices); universe_s *d_u3 = new universe_s(num_vertices);
 
         // allocate memory space for node array 
-//        cudaMalloc((void**)&d_u0, num_bytes_n); cudaMalloc((void**)&d_u1, num_bytes_n);
-//        cudaMalloc((void**)&d_u2, num_bytes_n); cudaMalloc((void**)&d_u3, num_bytes_n);
         cudaMalloc((void**)&d_u0, sizeof(u0)); cudaMalloc((void**)&d_u1, sizeof(u1));
         cudaMalloc((void**)&d_u2, sizeof(u2)); cudaMalloc((void**)&d_u3, sizeof(u3));
        	cudaMemcpy(d_u0, u0, num_bytes_n, cudaMemcpyHostToDevice); cudaMemcpy(d_u1, u1, num_bytes_n, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_u2, u2, num_bytes_n, cudaMemcpyHostToDevice); cudaMemcpy(d_u3, u3, num_bytes_n, cudaMemcpyHostToDevice);
 
         // allocate gpu space for smooth_r, smooth_g, smooth_b 
-//	float* d_smooth_r; cudaMalloc((void**)&d_smooth_r, num_smooth);
-//	float* d_smooth_g; cudaMalloc((void**)&d_smooth_g, num_smooth);
-//	float* d_smooth_b; cudaMalloc((void**)&d_smooth_b, num_smooth);
-	float* t_smooth_r = new float[num_smooth];//(float*)malloc(num_smooth);
-	float* t_smooth_g = new float[num_smooth];//(float*)malloc(num_smooth);
-	float* t_smooth_b = new float[num_smooth];//(float*)malloc(num_smooth);
+	float* d_smooth_r; cudaMalloc((void**)&d_smooth_r, num_smooth_s);
+	float* d_smooth_g; cudaMalloc((void**)&d_smooth_g, num_smooth_s);
+	float* d_smooth_b; cudaMalloc((void**)&d_smooth_b, num_smooth_s);
+	float* t_smooth_r = new float[num_smooth];
+	float* t_smooth_g = new float[num_smooth];
+	float* t_smooth_b = new float[num_smooth];
 
-	printf("begin to read image data.\n");	
+	printf("begin to read image data into temporal image data structure.\n");	
 	int tindex = 0;
 	for (int i = 0; i < num_cores*num_frame; i++) {
                  for (int y = 0; y < height; y++) {
@@ -586,37 +265,15 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
                          }
                  }
         }
-/*	for (int i = 0; i < num_cores*num_frame; i++) {
-                 for (int y = 0; y < height; y++) {
-                         for (int x = 0; x < width; x++) {
-                                 tindex = (i * height + y) * width + x; 
-                                 t_smooth_r[tindex] = imRef(smooth_r[i], x, y);
-                                 t_smooth_g[tindex] = imRef(smooth_g[i], x, y);
-                                 t_smooth_b[tindex] = imRef(smooth_b[i], x, y);
-                         }
-                 }
-        }
-*/	printf("begin to copy image data from cpu to gpu.\n");	
-//        cudaMemcpy(d_smooth_r, t_smooth_r, num_smooth, cudaMemcpyHostToDevice);
-//        cudaMemcpy(d_smooth_g, t_smooth_g, num_smooth, cudaMemcpyHostToDevice);
-//        cudaMemcpy(d_smooth_b, t_smooth_b, num_smooth, cudaMemcpyHostToDevice);
-	cudaError_t err0_1, err0_2, err0_3;
-	err0_1 = cudaMemcpyToSymbol("smooth_r1", &t_smooth_r[0], num_smooth_s, size_t(0), cudaMemcpyHostToDevice);
-	err0_2 = cudaMemcpyToSymbol("smooth_g1", &t_smooth_g[0], num_smooth_s, size_t(0), cudaMemcpyHostToDevice);
-	err0_3 = cudaMemcpyToSymbol("smooth_b1", &t_smooth_b[0], num_smooth_s, size_t(0), cudaMemcpyHostToDevice);
-	printf("Error0_1: %s\n", cudaGetErrorString(err0_1) );
-	printf("Error0_2: %s\n", cudaGetErrorString(err0_2) );
-	printf("Error0_3: %s\n", cudaGetErrorString(err0_3) );
-
+	printf("begin to copy image data from cpu to gpu.\n");	
+        cudaMemcpy(d_smooth_r, t_smooth_r, num_smooth_s, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_smooth_g, t_smooth_g, num_smooth_s, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_smooth_b, t_smooth_b, num_smooth_s, cudaMemcpyHostToDevice);
+	
 	printf("Start segmenting graph in GPU.\n");
-
-	int deviceId = 2;
-	cudaThreadExit(); // clears all the runtime state for the current thread
-	cudaSetDevice(deviceId); // explicit set the current device for the other calls
-
 	cudaError_t err, err2, err3, err4;
 	const char *err5;
-	gb1<<<grid_size,block_size>>>(/*d_smooth_r, d_smooth_g, d_smooth_b,*/ width, height,  
+	gb1<<<grid_size,block_size>>>(d_smooth_r, d_smooth_g, d_smooth_b, width, height,  
                                       d_edges0, d_edges1, d_edges2, d_edges3);
 	// transfter edges from gpu to cpu for next unit-segment-graph
         err2 = cudaMemcpy(edges0, d_edges0, num_bytes, cudaMemcpyDeviceToHost);
@@ -688,10 +345,9 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         delete edges_remain2; cudaFree(d_edges_remain2); delete edges_remain3; cudaFree(d_edges_remain3);
 	cudaFree(d_u0); cudaFree(d_u1); cudaFree(d_u2); cudaFree(d_u3);
 	cudaFree(d_er_num);  
-//        cudaFree(d_smooth_r); cudaFree(d_smooth_g); cudaFree(d_smooth_b);
+        cudaFree(d_smooth_r); cudaFree(d_smooth_g); cudaFree(d_smooth_b);
 	cudaFree(d_edges0); cudaFree(d_edges1); cudaFree(d_edges2); cudaFree(d_edges3); 
 	delete t_smooth_r; delete t_smooth_g; delete t_smooth_b; 
-//	free(t_smooth_r); free(t_smooth_g); free(t_smooth_b); 
 }
 
 /* Gaussian Smoothing */
