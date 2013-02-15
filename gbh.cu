@@ -88,7 +88,8 @@ void generate_output_s(char *path, int num_frame, int width, int height,
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
-        universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
+        universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3, int *er_num) {
+  // er_num is the array to record edge_remain element number
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;
   // ----- node number
@@ -99,7 +100,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
       edge *edges0 = new edge[num_edges_s];
       initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0);//, threshold0);
+      er_num[0] = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -108,7 +109,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
       edge *edges1 = new edge[num_edges_s];
       initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1);//, threshold1);
+      er_num[1] = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -117,7 +118,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
       edge *edges2 = new edge[num_edges_s];
       initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2);//, threshold2);
+      er_num[2] = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -126,7 +127,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
       edge *edges3 = new edge[num_edges_s];
       initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
-      segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3);//, threshold3);
+      er_num[3] = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3);
       //  printf("Finished unit graph segmentation.\n"); 
     }
     break;
@@ -142,6 +143,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	edges_remain->clear();
 	printf("Start segmenting graph in parallel.\n");
 
+	int er_num[4] = {0}; // edegs_remain elements number
         int num_vertices = num_frame * width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
         int num_bytes_n = num_vertices * sizeof(uni_elt);
@@ -167,7 +169,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         
 	gb<<<grid_size,block_size>>>(smooth_r, smooth_g, smooth_b, width, height, c, 
              d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
-             d_u0, d_u1, d_u2, d_u3);
+             d_u0, d_u1, d_u2, d_u3, er_num);
   	
         universe_s *u0 = new universe_s(num_vertices); universe_s *u1 = new universe_s(num_vertices); 
 	universe_s *u2 = new universe_s(num_vertices); universe_s *u3 = new universe_s(num_vertices);
@@ -181,7 +183,10 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
           mess->set_in_level(i, level, u2->find(i-2*num_vertices), u2->rank(i-2*num_vertices), u2->size(i-2*num_vertices), u2->mst(i-2*num_vertices));
         for (int i = 3*num_vertices; i < 4*num_vertices; ++i) 
           mess->set_in_level(i, level, u3->find(i-3*num_vertices), u3->rank(i-3*num_vertices), u3->size(i-3*num_vertices), u3->mst(i-3*num_vertices));
-        
+       
+	for (int i = 0; i < 4; ++i)
+          printf("edges_remain %d has %d elements.\n", i, er_num[i]);
+ 
 	// output oversegmentation in level 0 of heirarchical system 
         generate_output_s(path, num_frame, width, height, u0, num_vertices, 0); 
         generate_output_s(path, num_frame, width, height, u1, num_vertices, 1); 
