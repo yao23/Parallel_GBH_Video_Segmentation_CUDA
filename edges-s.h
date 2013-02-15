@@ -66,8 +66,8 @@ void generate_edge_s(edge *e, image<float> *r_v, image<float> *g_v,
 	e->b = y_u * width + x_u + z_u * (width * height);
 	e->w = sqrt3(
 			square3(r_v->imRef_s(r_v, x_v, y_v) - r_u->imRef_s(r_u, x_u, y_u))
-					+ square3(r_v->imRef_s(g_v, x_v, y_v) - r_u->imRef_s(g_u, x_u, y_u))
-					+ square3(r_v->imRef_s(b_v, x_v, y_v) - r_u->imRef_s(b_u, x_u, y_u)));
+					+ square3(g_v->imRef_s(g_v, x_v, y_v) - g_u->imRef_s(g_u, x_u, y_u))
+					+ square3(b_v->imRef_s(b_v, x_v, y_v) - b_u->imRef_s(b_u, x_u, y_u)));
 
 }
 

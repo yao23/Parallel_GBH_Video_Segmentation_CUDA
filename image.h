@@ -48,6 +48,7 @@ class image {
   __host__ __device__ int height() const { return h; }
   
   __host__ __device__ T imRef_s(image<T> *im, int x, int y) { return im->access[y][x]; }
+//  __host__ __device__ T imRef_s(image<T> im, int x, int y) { return im.access[y][x]; }
   /* image data. */
   T *data;
   
