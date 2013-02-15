@@ -86,11 +86,10 @@ using namespace std;
 }
 */
 // process every image with graph-based segmentation
-__global__ void gb(universe *mess, image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
+__global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
         edge *edges0, edge *edges1, edge *edges2, edge *edges3, float *threshold0, float *threshold1,
         float *threshold2, float *threshold3, universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
-//   printf("The frame number is %d and case number is %d.\n", num_frame, case_num);	
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;
   // ----- node number
@@ -167,7 +166,7 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         cudaMalloc((void**)&d_u0, num_bytes_n); cudaMalloc((void**)&d_u1, num_bytes_n);
         cudaMalloc((void**)&d_u2, num_bytes_n); cudaMalloc((void**)&d_u3, num_bytes_n);
         
-	gb<<<grid_size,block_size>>>(mess, smooth_r, smooth_g, smooth_b, width, height, c, 
+	gb<<<grid_size,block_size>>>(smooth_r, smooth_g, smooth_b, width, height, c, 
              d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
              d_edges0, d_edges1, d_edges2, d_edges3, d_th0, d_th1, d_th2, d_th3, d_u0, d_u1, d_u2, 
              d_u3);
