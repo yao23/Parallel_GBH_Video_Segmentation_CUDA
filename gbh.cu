@@ -217,8 +217,8 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         int num_bytes_n = sizeof(u0);
 	
 	// copy edges from cpu to gpu
-	edge *edges0 = new edge[num_bytes]; edge *edges1 = new edge[num_bytes]; 
-	edge *edges2 = new edge[num_bytes]; edge *edges3 = new edge[num_bytes]; 
+	edge *edges0 = new edge[num_edges_s]; edge *edges1 = new edge[num_edges_s]; 
+	edge *edges2 = new edge[num_edges_s]; edge *edges3 = new edge[num_edges_s]; 
 	edge *d_edges0 = NULL; edge *d_edges1 = NULL; edge *d_edges2 = NULL; edge *d_edges3 = NULL;
    	cudaMalloc((void**)&d_edges0, num_bytes); cudaMalloc((void**)&d_edges1, num_bytes);
    	cudaMalloc((void**)&d_edges2, num_bytes); cudaMalloc((void**)&d_edges3, num_bytes);
