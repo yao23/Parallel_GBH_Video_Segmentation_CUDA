@@ -74,7 +74,7 @@ __host__ __device__ int back_push(edge *edges_remain[], edge *pedge, int cur_it)
  * c: constant for treshold function.
  */
 __host__ __device__
-/*universe_s **/void segment_graph_s(int num_vertices, int num_edges, Edge edges, 
+/*universe_s **/void segment_graph_s(int num_vertices, int num_edges, edge *edges, 
 			float c, /*vector<edge>* edges_remain*/ edge *edges_remain[],
                         universe_s *u, float *threshold) { 
   // new vector containing remain edges
@@ -83,7 +83,7 @@ __host__ __device__
   int cur_it = 0; // current available iterator
 
   // sort edges by weight
-  bubble_sort<edge>(edges.edges, num_edges);
+  bubble_sort<edge>(edges, num_edges);
 
   // make a disjoint-set forest
 //  universe_s *u = new universe_s(num_vertices);
@@ -93,23 +93,22 @@ __host__ __device__
   for (int i = 0; i < num_vertices; i++)
     threshold[i] = THRESHOLD(1,c);
 
-  Edge pedge;
   // for each edge, in non-decreasing weight order...
   for (int i = 0; i < num_edges; i++) {
-    pedge.edges = &edges.edges[i];
+    edge *pedge = &edges[i];
     
     // components conected by this edge
-    int a = u->find(pedge.edges->a);
-    int b = u->find(pedge.edges->b);
+    int a = u->find(pedge->a);
+    int b = u->find(pedge->b);
     if (a != b) {
-      if ((pedge.edges->w <= threshold[a]) &&
-	  (pedge.edges->w <= threshold[b])) {
-	if (u->join(a, b, pedge.edges->w) == 1)
-          cur_it = back_push(edges_remain, pedge.edges, cur_it);
+      if ((pedge->w <= threshold[a]) &&
+	  (pedge->w <= threshold[b])) {
+	if (u->join(a, b, pedge->w) == 1)
+          cur_it = back_push(edges_remain, pedge, cur_it);
 	a = u->find(a);
-	threshold[a] = pedge.edges->w + THRESHOLD(u->size(a), c);
+	threshold[a] = pedge->w + THRESHOLD(u->size(a), c);
       }
-      else cur_it = back_push(edges_remain, pedge.edges, cur_it);
+      else cur_it = back_push(edges_remain, pedge, cur_it);
     }
   }
 

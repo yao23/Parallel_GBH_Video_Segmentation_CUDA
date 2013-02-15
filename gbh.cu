@@ -48,7 +48,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "segment-graph-s.h"
 
 #define num_cores 4 
-#define num_edges_s 3088836 
+#define num_edges_s 9568916 
 
 using namespace std;
 
@@ -88,7 +88,7 @@ using namespace std;
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
-        Edge edges0, Edge edges1, Edge edges2, Edge edges3, float *threshold0, float *threshold1,
+        edge *edges0, edge *edges1, edge *edges2, edge *edges3, float *threshold0, float *threshold1,
         float *threshold2, float *threshold3, universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3) {
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;
@@ -133,7 +133,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
 }
 
 /* pixel level minimum spanning tree merge */
-void segment_graph(universe *mess, vector<edge>* edges_remain, Edge edges, float c, int width, int height, int level,
+void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, float c, int width, int height, int level,
                 image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[], int num_frame, char *path) {
 	// new vector containing remain edges
 	edges_remain->clear();
@@ -147,10 +147,10 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, Edge edges, float
 	int block_size = num_frame;
 	int grid_size = num_cores;
 	// initialize edges and remained edges array	
-	edge **d_edges_remain0 = NULL;  /*edge *d_edges0 = NULL;*/ Edge d_edges0;
-	edge **d_edges_remain1 = NULL;  /*edge *d_edges1 = NULL;*/ Edge d_edges1;
-	edge **d_edges_remain2 = NULL;  /*edge *d_edges2 = NULL;*/ Edge d_edges2;
-	edge **d_edges_remain3 = NULL;  /*edge *d_edges3 = NULL;*/ Edge d_edges3;
+	edge **d_edges_remain0 = NULL;  edge *d_edges0 = NULL;
+	edge **d_edges_remain1 = NULL;  edge *d_edges1 = NULL;
+	edge **d_edges_remain2 = NULL;  edge *d_edges2 = NULL;
+	edge **d_edges_remain3 = NULL;  edge *d_edges3 = NULL;
 	// cudaMalloc memory space for edge vectors 
         cudaMalloc((void**)&d_edges_remain0, num_bytes);  cudaMalloc((void**)&d_edges0, num_bytes);
         cudaMalloc((void**)&d_edges_remain1, num_bytes);  cudaMalloc((void**)&d_edges1, num_bytes);
@@ -326,9 +326,7 @@ void segment_image(char *path, image<rgb> *im[], int num_frame, float c,
 
 	// step 3 -- build edges
 	printf("start build edges\n");
-//	edge* edges = new edge[num_edges];
-        Edge edges;
-        edges.edges = new edge[num_edges];
+	edge* edges = new edge[num_edges];
 	initialize_edges(edges, num_frame, width, height, smooth_r, smooth_g,
 			smooth_b, 0);
 	printf("end build edges\n");
@@ -372,7 +370,6 @@ void segment_image(char *path, image<rgb> *im[], int num_frame, float c,
 
 		printf("start fill edge weight\n");
 		fill_edge_weight(*edges_region[i], mess, i);
-//		initialize_edges(edges, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
 		printf("end fill edge weight\n");
 
 		printf("start segment graph region\n");

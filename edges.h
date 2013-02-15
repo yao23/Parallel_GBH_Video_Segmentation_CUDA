@@ -41,7 +41,7 @@ typedef struct {
 
 typedef struct {
   edge *edges;
-} Edge;
+} Edges;
 
 __host__ __device__
 float sqrt3(const float x)  
@@ -65,16 +65,16 @@ float inline square3(float n)
 
 /* fill pixel level edges */
 __host__ __device__
-void generate_edge(edge e, image<float> *r_v, image<float> *g_v,
+void generate_edge(edge *e, image<float> *r_v, image<float> *g_v,
 		image<float> *b_v, image<float> *r_u, image<float> *g_u,
 		image<float> *b_u, int x_v, int y_v, int z_v, int x_u, int y_u,
 		int z_u) {
 	int width = r_v->width();
 	int height = r_v->height();
 
-	e.a = y_v * width + x_v + z_v * (width * height);
-	e.b = y_u * width + x_u + z_u * (width * height);
-	e.w = sqrt3(
+	e->a = y_v * width + x_v + z_v * (width * height);
+	e->b = y_u * width + x_u + z_u * (width * height);
+	e->w = sqrt3(
 			square3(imRef(r_v, x_v, y_v) - imRef(r_u, x_u, y_u))
 					+ square3(imRef(g_v, x_v, y_v) - imRef(g_u, x_u, y_u))
 					+ square3(imRef(b_v, x_v, y_v) - imRef(b_u, x_u, y_u)));
@@ -100,7 +100,7 @@ void fill_edge_weight(vector<edge> edges_region, universe *mess, int level) {
 
 /* initialize pixel level edges */
 __host__ __device__
-void initialize_edges(Edge edges, int num_frame, int width, int height,
+void initialize_edges(edge *edges, int num_frame, int width, int height,
 		image<float> *smooth_r[], image<float> *smooth_g[],
 		image<float> *smooth_b[], int case_num) {
         int offset = case_num * num_frame;
@@ -112,25 +112,25 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 			for (int x = 0; x < width; x++) {
 				// in the same plane
 				if (x < width - 1) {
-					generate_edge(edges.edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
+					generate_edge(&edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
 							smooth_b[z+offset], smooth_r[z+offset], smooth_g[z+offset], smooth_b[z+offset],
 							x + 1, y, z, x, y, z);
 					num_edges++;
 				}
 				if (y < height - 1) {
-					generate_edge(edges.edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
+					generate_edge(&edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
 							smooth_b[z+offset], smooth_r[z+offset], smooth_g[z+offset], smooth_b[z+offset],
 							x, y + 1, z, x, y, z);
 					num_edges++;
 				}
 				if ((x < width - 1) && (y < height - 1)) {
-					generate_edge(edges.edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
+					generate_edge(&edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
 							smooth_b[z+offset], smooth_r[z+offset], smooth_g[z+offset], smooth_b[z+offset],
 							x + 1, y + 1, z, x, y, z);
 					num_edges++;
 				}
 				if ((x < width - 1) && (y > 0)) {
-					generate_edge(edges.edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
+					generate_edge(&edges[num_edges], smooth_r[z+offset], smooth_g[z+offset],
 							smooth_b[z+offset], smooth_r[z+offset], smooth_g[z+offset], smooth_b[z+offset],
 							x + 1, y - 1, z, x, y, z);
 					num_edges++;
@@ -139,7 +139,7 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 				// to the previous plane
 				if (z > 0) {
 
-					generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+					generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 							smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 							smooth_g[z+offset], smooth_b[z+offset], x, y, z - 1, x, y, z);
 					num_edges++;
@@ -147,49 +147,49 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
 						// additional 8 edges
 						// x - 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y - 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x - 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x - 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y + 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y + 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y + 1, z - 1,
 								x, y, z);
@@ -197,31 +197,31 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (x == 0 && y > 0 && y < height - 1) {
 						// additional 5 edges
 						// x, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y - 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x + 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y + 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y + 1, z - 1,
 								x, y, z);
@@ -229,31 +229,31 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (x == width - 1 && y > 0 && y < height - 1) {
 						// additional 5 edges
 						// x - 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y - 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x - 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x - 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y + 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y + 1, z - 1, x, y,
 								z);
@@ -261,31 +261,31 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (y == 0 && x > 0 && x < width - 1) {
 						// additional 5 edges
 						// x - 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x - 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y + 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y + 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y + 1, z - 1,
 								x, y, z);
@@ -293,31 +293,31 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (y == height - 1 && x > 0 && x < width - 1) {
 						// additional 5 edges
 						// x - 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y - 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x - 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y, z - 1, x, y,
 								z);
@@ -325,19 +325,19 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (x == 0 && y == 0) {
 						// additional 3 edges
 						// x + 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y + 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y + 1, z - 1,
 								x, y, z);
@@ -345,19 +345,19 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (x == 0 && y == height - 1) {
 						// additional 3 edges
 						// x, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y - 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x + 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x + 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x + 1, y, z - 1, x, y,
 								z);
@@ -365,19 +365,19 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (x == width - 1 && y == 0) {
 						// additional 3 edges
 						// x - 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y, z - 1, x, y,
 								z);
 						num_edges++;
 						// x - 1, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y + 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y + 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y + 1, z - 1, x, y,
 								z);
@@ -385,19 +385,19 @@ void initialize_edges(Edge edges, int num_frame, int width, int height,
 					} else if (x == width - 1 && y == height - 1) {
 						// additional 3 edges
 						// x - 1, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y - 1, z - 1,
 								x, y, z);
 						num_edges++;
 						// x, y - 1
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x, y - 1, z - 1, x, y,
 								z);
 						num_edges++;
 						// x - 1, y
-						generate_edge(edges.edges[num_edges], smooth_r[z+offset - 1],
+						generate_edge(&edges[num_edges], smooth_r[z+offset - 1],
 								smooth_g[z+offset - 1], smooth_b[z+offset - 1], smooth_r[z+offset],
 								smooth_g[z+offset], smooth_b[z+offset], x - 1, y, z - 1, x, y,
 								z);
