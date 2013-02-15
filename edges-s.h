@@ -58,10 +58,10 @@ void generate_edge_s(edge *e, image<float> *r_v, image<float> *g_v,
 		image<float> *b_v, image<float> *r_u, image<float> *g_u,
 		image<float> *b_u, int x_v, int y_v, int z_v, int x_u, int y_u,
 		int z_u, int width, int height) {
-	width = r_v->width();
-	height = r_v->height();
+//	width = r_v->width();
+//	height = r_v->height();
 //	printf("x_v is %d and y_v %d, x_u %d and y_u %d.\n", x_v, y_v, x_u, y_u); 
-	printf("image data is %f.\n", r_v->imRef_s(r_v, x_v, y_v));
+//	printf("image data is %f.\n", r_v->imRef_s(r_v, x_v, y_v));
 	e->a = y_v * width + x_v + z_v * (width * height);
 	e->b = y_u * width + x_u + z_u * (width * height);
 	e->w = sqrt3(
