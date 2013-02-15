@@ -28,10 +28,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include <sys/types.h>
 #include "image.h"
 #include "pnmfile.h"
+//#include "segment-image-multi.h"
 #include "disjoint-set.h"
 
-// from segment-image-multi.h
-#include <iostream> 
+#include <iostream> // from segment-image-multi.h
 #include <fstream>
 #include <vector>
 #include <unistd.h>
@@ -42,14 +42,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "disjoint-set.h"
 #include "segment-graph-multi.h"
 
-// from segment-graph-multi.h
-#include <algorithm> 
+#include <algorithm> // from segment-graph-multi.h
 #include <cmath>
 #include "disjoint-set-s.h"
 #include "segment-graph-s.h"
 
+#include <cuda.h>
 #define num_cores 4 
-#define num_edges_s 153600 
+//#define num_edges_s 9568916 
 
 using namespace std;
 
@@ -86,115 +86,85 @@ void generate_output_s(char *path, int num_frame, int width, int height,
         delete[] output;
 }
 
-__device__ float sqrt2(const float x){
-  union
-  {
-    int i;
-    float x;
-  } u;
-  
-  u.x = x;
-  u.i = (1<<29) + (u.i >> 1) - (1<<22);
-  return u.x;
-}
- 
-__device__ float inline square2(float n) { return n*n; }
-
-// dissimilarity measure between pixels
-__device__ float diff_s(image<float> *r, image<float> *g, image<float> *b,
-                         int x1, int y1, int x2, int y2) { 
-  return sqrt2(square2(imRef(r, x1, y1)-imRef(r, x2, y2)) +
-              square2(imRef(g, x1, y1)-imRef(g, x2, y2)) +
-               square2(imRef(b, x1, y1)-imRef(b, x2, y2)));
-} 
-
-__device__ int initialize_edges_s(edge *edges, int width, int height, 
-                        image<float> *smooth_r, image<float> *smooth_g, image<float> *smooth_b){
-  int num = 0;
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      if (x < width-1) {
-        edges[num].a = y * width + x;
-        edges[num].b = y * width + (x+1);
-        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x+1, y);
-        num++;
-      }
-      if (y < height-1) {
-        edges[num].a = y * width + x;
-        edges[num].b = (y+1) * width + x;
-        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x, y+1);
-        num++;
-      }
-      if ((x < width-1) && (y < height-1)) {
-        edges[num].a = y * width + x;
-        edges[num].b = (y+1) * width + (x+1);
-        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x+1, y+1);
-        num++;
-      }
-      if ((x < width-1) && (y > 0)) {
-        edges[num].a = y * width + x;
-        edges[num].b = (y-1) * width + (x+1);
-        edges[num].w = diff_s(smooth_r, smooth_g, smooth_b, x, y, x+1, y-1);
-        num++;
-      }
-    }
-  }
-  return num;
-}
+__device__ void change4(int *x) { *x = 1111; }
 
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
         int width, int height, float c, edge *edges_remain0[], edge *edges_remain1[], edge *edges_remain2[], edge *edges_remain3[],
-        universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3, int *er_num) {
+        universe_s *u0, universe_s *u1, universe_s *u2, universe_s *u3, int *er_num, int *x) {
   // er_num is the array to record edge_remain element number
   int case_num = blockIdx.x;
   int num_frame = blockDim.x;
+//      *x = 1111; 
   // ----- node number
   int num_vertices = num_frame * width * height;
+  // ----- edge number
+  int num_edges_plane = (width - 1) * (height - 1) * 2 + width * (height - 1) + (width - 1) * height;
+  int num_edges_layer = (width - 2) * (height - 2) * 9 + (width - 2) * 2 * 6 + (height - 2) * 2 * 6 + 4 * 4;
+  int num_edges_s = num_edges_plane * num_frame + num_edges_layer * (num_frame - 1);
   switch(case_num) {
     case 0: 
     {
-      int num_es = 0; // edges number
       edge *edges0 = new edge[num_edges_s];
-      num_es = initialize_edges_s(edges0, width, height, smooth_r[0], smooth_g[0], smooth_b[0]);
+      initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
-      er_num[0] = segment_graph_s(num_vertices, num_es, edges0, c, edges_remain0, u0);
+      er_num[0] = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0, x);
       //  printf("Finished unit graph segmentation.\n"); 
+//      *x = 1; 
+//      er_num[0] = 15000;
     }
     break;
     case 1: 
     {
-      int num_es = 0; // edges number
       edge *edges1 = new edge[num_edges_s];
-      num_es = initialize_edges_s(edges1, width, height, smooth_r[1], smooth_g[1], smooth_b[1]);
+      initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
-      er_num[1] = segment_graph_s(num_vertices, num_es, edges1, c, edges_remain1, u1);
+      er_num[1] = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1, x);
       //  printf("Finished unit graph segmentation.\n"); 
+//      *x = 11; 
+//      er_num[1] = 15000;
     }
     break;
     case 2: 
     {
-      int num_es = 0; // edges number
       edge *edges2 = new edge[num_edges_s];
-      num_es = initialize_edges_s(edges2, width, height, smooth_r[2], smooth_g[2], smooth_b[2]);
+      initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
-      er_num[2] = segment_graph_s(num_vertices, num_es, edges2, c, edges_remain2, u2);
+      er_num[2] = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2, x);
       //  printf("Finished unit graph segmentation.\n"); 
+//      *x = 111; 
+//      er_num[2] = 15000;
     }
     break;
     case 3: 
     {
-      int num_es = 0; // edges number
       edge *edges3 = new edge[num_edges_s];
-      num_es = initialize_edges_s(edges3, width, height, smooth_r[3], smooth_g[3], smooth_b[3]);
+      initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
-      er_num[3] = segment_graph_s(num_vertices, num_es, edges3, c, edges_remain3, u3);
-      //  printf("Finished unit graph segmentation.\n"); 
+      er_num[3] = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3, x);
+      //  printf("Finished unit graph segmentation.\n");
+//      *x = 1111; 
+//      er_num[3] = 15000;
     }
     break;
-    default: break;
+    default: 
+      /**x = 1111;*/ break;
   }
 //  printf("Finished mess assignment.\n");
+//  *x = 15000;
+  change4(x);
+}
+
+__global__ void change(int *x) {
+  *x = 1221;
+}
+
+__global__ void change2(int *x) {
+  *x = 1331;
+}
+
+__global__ void change3(int *x) {
+  x[blockIdx.x] = blockIdx.x;
 }
 
 /* pixel level minimum spanning tree merge */
@@ -204,37 +174,88 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	edges_remain->clear();
 	printf("Start segmenting graph in parallel.\n");
 
+	int x = 20; // test whether or not execute segment-graph-s function
+	printf("-----------------------------------------------------Before cuda1 change, x is %d.\n", x); 
+	int *d_x;
+     	cudaMalloc((void**)&d_x, sizeof(int));
+//	cudaMemcpy(d_x, &x, sizeof(int), cudaMemcpyHostToDevice);   
+//        change<<<4,20>>>(d_x);
+//	cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);  cudaFree(d_x); 
+//	printf("-----------------------------------------------------After cuda2 change, x is %d.\n", x); 
+ 
+//     	cudaMalloc((void**)&d_x, sizeof(int));
+//        change2<<<4,20>>>(d_x);
+//	cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);  cudaFree(d_x);
+//	printf("-----------------------------------------------------After cuda3 change, x is %d.\n", x); 
+//     	cudaMalloc((void**)&d_x, sizeof(int));
+
+       
 	int er_num[4] = {0}; // edegs_remain elements number
-        int num_vertices = width * height;
+//        for (int i = 0; i < 4; ++i)
+// 	  er_num[i] = i; 
+        int *d_er_num = {0};
+
+	// ----- edge number
+        int num_edges_plane = (width - 1) * (height - 1) * 2 + width * (height - 1) + (width - 1) * height;
+        int num_edges_layer = (width - 2) * (height - 2) * 9 + (width - 2) * 2 * 6 + (height - 2) * 2 * 6 + 4 * 4;
+        int num_edges_s = num_edges_plane * num_frame + num_edges_layer * (num_frame - 1);
+        // ----- node number
+        int num_vertices = num_frame * width * height;
         int num_bytes = num_edges_s * sizeof(edge); // edge array size
-        int num_bytes_n = num_vertices * sizeof(uni_elt);
+//        int num_bytes_n = num_vertices * sizeof(uni_elt);
 	
-	int block_size = num_frame;
-	int grid_size = num_cores;
+	int block_size = num_frame; //ThreadsPerBlock
+	int grid_size = num_cores; //BlocksPerGrid
+	printf("grid_size is %d and block_size is %d.\n", grid_size, block_size);
+
+	universe_s *u0 = new universe_s(num_vertices); universe_s *u1 = new universe_s(num_vertices); 
+	universe_s *u2 = new universe_s(num_vertices); universe_s *u3 = new universe_s(num_vertices);
+        int num_bytes_n = sizeof(u0);
+
 	// initialize edges and remained edges array	
-	edge **d_edges_remain0 = NULL; 
-	edge **d_edges_remain1 = NULL; 
-	edge **d_edges_remain2 = NULL; 
-	edge **d_edges_remain3 = NULL; 
+	edge *edges_remain0 = new edge[num_edges_s]; edge **d_edges_remain0 = NULL; 
+	edge *edges_remain1 = new edge[num_edges_s]; edge **d_edges_remain1 = NULL; 
+	edge *edges_remain2 = new edge[num_edges_s]; edge **d_edges_remain2 = NULL; 
+	edge *edges_remain3 = new edge[num_edges_s]; edge **d_edges_remain3 = NULL; 
+	// cudaMalloc memory space for edges_remain element number counter
+        cudaMalloc((void**)&d_er_num, 4*sizeof(int)); cudaMemcpy(d_er_num, er_num, 4*sizeof(int), cudaMemcpyHostToDevice);
+//	change3<<<4,1>>>(d_er_num);
+//        cudaMemcpy(er_num, d_er_num, 4*sizeof(int), cudaMemcpyDeviceToHost);
+//	for (int i = 0; i < 4; ++i) {
+//          printf("----------------------After change3, edges_remain %d has %d elements.\n", i, er_num[i]);
+//	}
 	// cudaMalloc memory space for edge vectors 
-        cudaMalloc((void**)&d_edges_remain0, num_bytes);
-        cudaMalloc((void**)&d_edges_remain1, num_bytes);
-        cudaMalloc((void**)&d_edges_remain2, num_bytes);
-        cudaMalloc((void**)&d_edges_remain3, num_bytes);
+        cudaMalloc((void**)&d_edges_remain0, num_bytes); cudaMemcpy(d_edges_remain0, edges_remain0, num_bytes, cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&d_edges_remain1, num_bytes); cudaMemcpy(d_edges_remain1, edges_remain1, num_bytes, cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&d_edges_remain2, num_bytes); cudaMemcpy(d_edges_remain2, edges_remain2, num_bytes, cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&d_edges_remain3, num_bytes); cudaMemcpy(d_edges_remain3, edges_remain3, num_bytes, cudaMemcpyHostToDevice);
         // initialize node array 
         universe_s *d_u0 = new universe_s(num_vertices); universe_s *d_u1 = new universe_s(num_vertices); 
 	universe_s *d_u2 = new universe_s(num_vertices); universe_s *d_u3 = new universe_s(num_vertices);
         // allocate memory space for node array 
         cudaMalloc((void**)&d_u0, num_bytes_n); cudaMalloc((void**)&d_u1, num_bytes_n);
         cudaMalloc((void**)&d_u2, num_bytes_n); cudaMalloc((void**)&d_u3, num_bytes_n);
+//        cudaMalloc((void**)&d_u0, sizeof(u0)); cudaMalloc((void**)&d_u1, sizeof(u1));
+//        cudaMalloc((void**)&d_u2, sizeof(u2)); cudaMalloc((void**)&d_u3, sizeof(u3));
+       	cudaMemcpy(d_u0, u0, num_bytes_n, cudaMemcpyHostToDevice); cudaMemcpy(d_u1, u1, num_bytes_n, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_u2, u2, num_bytes_n, cudaMemcpyHostToDevice); cudaMemcpy(d_u3, u3, num_bytes_n, cudaMemcpyHostToDevice);
         
+	printf("Start segmenting graph in GPU.\n");
+	cudaError_t err, err2;
 	gb<<<grid_size,block_size>>>(smooth_r, smooth_g, smooth_b, width, height, c, 
              d_edges_remain0, d_edges_remain1, d_edges_remain2, d_edges_remain3,
-             d_u0, d_u1, d_u2, d_u3, er_num);
-  	
-        universe_s *u0 = new universe_s(num_vertices); universe_s *u1 = new universe_s(num_vertices); 
-	universe_s *u2 = new universe_s(num_vertices); universe_s *u3 = new universe_s(num_vertices);
-       	cudaMemcpy(u0, d_u0, num_bytes_n, cudaMemcpyDeviceToHost); cudaMemcpy(u1, d_u1, num_bytes_n, cudaMemcpyDeviceToHost);
+             d_u0, d_u1, d_u2, d_u3, d_er_num, d_x);
+  
+	err = cudaGetLastError();
+	printf("Error: %s\n", cudaGetErrorString(err) );
+	
+	printf("End segmenting graph in GPU.\n");
+	err2 = cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);   
+	printf("Error: %s\n", cudaGetErrorString(err2) );
+//	cudaMemcpyFromSymbol(&x, "d_x", sizeof(int), 0, cudaMemcpyDeviceToHost);
+	printf("-----------------------------------------------------After cuda1 change, x is %d.\n", x); cudaFree(d_x);
+
+	cudaMemcpy(u0, d_u0, num_bytes_n, cudaMemcpyDeviceToHost); cudaMemcpy(u1, d_u1, num_bytes_n, cudaMemcpyDeviceToHost);
 	cudaMemcpy(u2, d_u2, num_bytes_n, cudaMemcpyDeviceToHost); cudaMemcpy(u3, d_u3, num_bytes_n, cudaMemcpyDeviceToHost);
 	for (int i = 0; i < num_vertices; ++i) 
           mess->set_in_level(i, level, u0->find(i), u0->rank(i), u0->size(i), u0->mst(i)); 
@@ -245,8 +266,11 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         for (int i = 3*num_vertices; i < 4*num_vertices; ++i) 
           mess->set_in_level(i, level, u3->find(i-3*num_vertices), u3->rank(i-3*num_vertices), u3->size(i-3*num_vertices), u3->mst(i-3*num_vertices));
        
-	for (int i = 0; i < 4; ++i)
+	        cudaMemcpy(er_num, d_er_num, 4*sizeof(int), cudaMemcpyDeviceToHost);
+	for (int i = 0; i < 4; ++i) {
           printf("edges_remain %d has %d elements.\n", i, er_num[i]);
+//          printf("edges_remain %d has %d elements.\n", i, d_er_num[i]);
+        }
  
 	// output oversegmentation in level 0 of heirarchical system 
         generate_output_s(path, num_frame, width, height, u0, num_vertices, 0); 
@@ -258,25 +282,28 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         generate_output_s(path, num_frame, width, height, u6, num_vertices, 6); 
         generate_output_s(path, num_frame, width, height, u7, num_vertices, 7); 
 */	// transfter edges to edges_remian for first level hierarchical segmentation	
-	edge *edges_remain0 = new edge[num_edges_s];  cudaMemcpy(edges_remain0, d_edges_remain0, num_bytes, cudaMemcpyDeviceToHost);
-	edge *edges_remain1 = new edge[num_edges_s];  cudaMemcpy(edges_remain1, d_edges_remain1, num_bytes, cudaMemcpyDeviceToHost);
-	edge *edges_remain2 = new edge[num_edges_s];  cudaMemcpy(edges_remain2, d_edges_remain2, num_bytes, cudaMemcpyDeviceToHost);
-	edge *edges_remain3 = new edge[num_edges_s];  cudaMemcpy(edges_remain3, d_edges_remain3, num_bytes, cudaMemcpyDeviceToHost);
+        cudaMemcpy(edges_remain0, d_edges_remain0, num_bytes, cudaMemcpyDeviceToHost);
+	cudaMemcpy(edges_remain1, d_edges_remain1, num_bytes, cudaMemcpyDeviceToHost);
+	cudaMemcpy(edges_remain2, d_edges_remain2, num_bytes, cudaMemcpyDeviceToHost);
+	cudaMemcpy(edges_remain3, d_edges_remain3, num_bytes, cudaMemcpyDeviceToHost);
 	// collect remained edges which were not merged in first level graph-based segmentation
-        for ( int it = 0; it < num_edges_s; it++ )
+        for ( int it = 0; it < er_num[0]; it++ )
           edges_remain->push_back(edges_remain0[it]); 
-        for ( int it = 0; it < num_edges_s; it++ )
+        for ( int it = 0; it < er_num[1]; it++ )
           edges_remain->push_back(edges_remain1[it]); 
-        for ( int it = 0; it < num_edges_s; it++ )
+        for ( int it = 0; it < er_num[2]; it++ )
           edges_remain->push_back(edges_remain2[it]); 
-        for ( int it = 0; it < num_edges_s; it++ )
+        for ( int it = 0; it < er_num[3]; it++ )
           edges_remain->push_back(edges_remain3[it]); 
                 
 	sort(edges_remain->begin(), edges_remain->end());
+	printf("Edges region0 number is %d.\n", (int)edges_remain->size());
+
 	// clear temporary variables
         delete edges_remain0; cudaFree(d_edges_remain0); delete edges_remain1; cudaFree(d_edges_remain1);
         delete edges_remain2; cudaFree(d_edges_remain2); delete edges_remain3; cudaFree(d_edges_remain3);
 	cudaFree(d_u0); cudaFree(d_u1); cudaFree(d_u2); cudaFree(d_u3);
+	cudaFree(d_er_num);
 }
 
 /* Gaussian Smoothing */
@@ -435,6 +462,7 @@ void segment_image(char *path, image<rgb> *im[], int num_frame, float c,
 		fill_edge_weight(*edges_region[i], mess, i);
 		printf("end fill edge weight\n");
 
+		printf("Edges region%d number is %d.\n", i, (int)edges_region[i]->size());
 		printf("start segment graph region\n");
 		edges_region[i + 1] = new vector<edge>();
 		segment_graph_region(mess, edges_region[i + 1], edges_region[i], c_reg, i + 1);
