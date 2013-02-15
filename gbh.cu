@@ -274,6 +274,11 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
         cudaMemcpy(d_smooth_b, t_smooth_b, num_smooth, cudaMemcpyHostToDevice);
 	
 	printf("Start segmenting graph in GPU.\n");
+
+	int deviceId = 2;
+	cudaThreadExit(); // clears all the runtime state for the current thread
+	cudaSetDevice(deviceId); // explicit set the current device for the other calls
+
 	cudaError_t err, err2, err3, err4;
 	const char *err5;
 	gb1<<<grid_size,block_size>>>(d_smooth_r, d_smooth_g, d_smooth_b, width, height,  
