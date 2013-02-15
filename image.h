@@ -30,13 +30,13 @@ template <class T>
 class image {
  public:
   /* create an image */
-  image(const int width, const int height, const bool init = true);
+  __host__ __device__ image(const int width, const int height, const bool init = true);
 
   /* delete an image */
-  ~image();
+  __host__ __device__ ~image();
 
   /* init an image */
-  void init(const T &val);
+  __host__ __device__ void init(const T &val);
 
   /* copy an image */
   image<T> *copy() const;
@@ -47,6 +47,7 @@ class image {
   /* get the height of an image. */
   __host__ __device__ int height() const { return h; }
   
+  __host__ __device__ T imRef_s(image<T> *im, int x, int y) { return im->access[y][x]; }
   /* image data. */
   T *data;
   
@@ -64,7 +65,7 @@ class image {
 #define imPtr(im, x, y) &(im->access[y][x])
 
 template <class T>
-image<T>::image(const int width, const int height, const bool init) {
+__host__ __device__ image<T>::image(const int width, const int height, const bool init) {
   w = width;
   h = height;
   data = new T[w * h];  // allocate space for image data
@@ -79,13 +80,14 @@ image<T>::image(const int width, const int height, const bool init) {
 }
 
 template <class T>
+__host__ __device__ 
 image<T>::~image() {
   delete [] data; 
   delete [] access;
 }
 
 template <class T>
-void image<T>::init(const T &val) {
+__host__ __device__ void image<T>::init(const T &val) {
   T *ptr = imPtr(this, 0, 0);
   T *end = imPtr(this, w-1, h-1);
   while (ptr <= end)
