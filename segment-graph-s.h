@@ -74,9 +74,9 @@ __host__ __device__ int back_push(edge *edges_remain[], edge *pedge, int cur_it)
  * c: constant for treshold function.
  */
 __host__ __device__
-/*universe_s **/void segment_graph_s(int num_vertices, int num_edges, edge *edges, 
+/*universe_s *voidi*/int segment_graph_s(int num_vertices, int num_edges, edge *edges, 
 			float c, /*vector<edge>* edges_remain*/ edge *edges_remain[],
-                        universe_s *u/*, float *threshold*/) { 
+                        universe_s *u) { 
   // new vector containing remain edges
 //  edges_remain->clear();
   edges_remain = NULL;   
@@ -115,6 +115,7 @@ __host__ __device__
   // free up
   delete threshold;
 //  return u;
+  return cur_it;  
 }
 
 #endif
