@@ -87,7 +87,7 @@ void generate_output_s(char *path, int num_frame, int width, int height,
         delete[] output;
 }
 
-__device__ void change4(int *x) { *x = 1111;}
+__device__ void change4(int *x) { *x = 20121111; printf("In cuda1 change4, x is %d.----------------------------\n", *x);}
 
 // process every image with graph-based segmentation
 __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<float> *smooth_b[],
@@ -97,7 +97,8 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
   // er_num is the array to record edge_remain element number
   int case_num = blockIdx.x;
   int num_frame = blockDim.x * 20;
-//      *x = 1111; 
+//      *x = 1111;
+//  printf("In cuda1 change, x is %d.---------------------------------------------------------------\n", *x); 
   // ----- node number
   int num_vertices = num_frame * width * height;
   // ----- edge number
@@ -153,8 +154,9 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
       /**x = 1111;*/ break;
   }
 //  printf("Finished mess assignment.\n");
-//  *x = 15000;
-  change4(x);
+//  *x = 5;
+//  printf("In cuda1 change, x1 is %d.---------------------------------------------------------------\n", *x); 
+//  change4(x);
 }
 
 __global__ void change(int *x) {
@@ -188,21 +190,21 @@ void segment_graph(universe *mess, vector<edge>* edges_remain, edge *edges, floa
 	// new vector containing remain edges
 	edges_remain->clear();
 	printf("Start segmenting graph in parallel.\n");
-        printf("One smooth structure is %ld.\n", sizeof(smooth_r[0]));
-        printf("One smooth pointer's size is %ld.\n", sizeof(image<float>*));
-	printf("-----------------The first smooth_r address is %p\n",(void*)&(smooth_r[0]));	
-	printf("-----------------The second smooth_r address is %p\n",(void*)&(smooth_r[20]));	
-	printf("-----------------The third smooth_r address is %p\n",(void*)&(smooth_r[40]));	
-	printf("-----------------The fourth smooth_r address is %p\n",(void*)&(smooth_r[60]));	
-	printf("width is %d and height is %d.\n", width, height);
+//        printf("One smooth structure is %ld.\n", sizeof(smooth_r[0]));
+//        printf("One smooth pointer's size is %ld.\n", sizeof(image<float>*));
+//	printf("-----------------The first smooth_r address is %p\n",(void*)&(smooth_r[0]));	
+//	printf("-----------------The second smooth_r address is %p\n",(void*)&(smooth_r[20]));	
+//	printf("-----------------The third smooth_r address is %p\n",(void*)&(smooth_r[40]));	
+//	printf("-----------------The fourth smooth_r address is %p\n",(void*)&(smooth_r[60]));	
+//	printf("width is %d and height is %d.\n", width, height);
 	int x = 20; // test whether or not execute segment-graph-s function
 	printf("-----------------------------------------------------Before cuda1 change, x is %d.\n", x); 
 	int *d_x;
      	cudaMalloc((void**)&d_x, sizeof(int));
-//	cudaMemcpy(d_x, &x, sizeof(int), cudaMemcpyHostToDevice);   
-//        change<<<4,20>>>(d_x);
-//	cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);  cudaFree(d_x); 
-//	printf("-----------------------------------------------------After cuda2 change, x is %d.\n", x); 
+	cudaMemcpy(d_x, &x, sizeof(int), cudaMemcpyHostToDevice);   
+        change<<<4,20>>>(d_x);
+	cudaMemcpy(&x, d_x, sizeof(int), cudaMemcpyDeviceToHost);  cudaFree(d_x); 
+	printf("-----------------------------------------------------After cuda2 change, x is %d.\n", x); 
  
 //     	cudaMalloc((void**)&d_x, sizeof(int));
 //        change2<<<4,20>>>(d_x);
