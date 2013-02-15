@@ -47,6 +47,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "disjoint-set-s.h"
 #include "segment-graph-s.h"
 
+#include "edges-s.h"
 #include <cuda.h>
 #define num_cores 4 
 //#define num_edges_s 9568916 
@@ -107,7 +108,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     case 0: 
     {
 //      edge *edges0 = new edge[num_edges_s];
-      initialize_edges(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
+      initialize_edges_s(edges0, num_frame, width, height, smooth_r, smooth_g, smooth_b, 0);
       //  printf("Finished edge initialization.\n");
       er_num[0] = segment_graph_s(num_vertices, num_edges_s, edges0, c, edges_remain0, u0, x);
       //  printf("Finished unit graph segmentation.\n"); 
@@ -118,7 +119,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     case 1: 
     {
 //      edge *edges1 = new edge[num_edges_s];
-      initialize_edges(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
+      initialize_edges_s(edges1, num_frame, width, height, smooth_r, smooth_g, smooth_b, 1);
       //  printf("Finished edge initialization.\n");
       er_num[1] = segment_graph_s(num_vertices, num_edges_s, edges1, c, edges_remain1, u1, x);
       //  printf("Finished unit graph segmentation.\n"); 
@@ -129,7 +130,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     case 2: 
     {
 //      edge *edges2 = new edge[num_edges_s];
-      initialize_edges(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
+      initialize_edges_s(edges2, num_frame, width, height, smooth_r, smooth_g, smooth_b, 2);
       //  printf("Finished edge initialization.\n");
       er_num[2] = segment_graph_s(num_vertices, num_edges_s, edges2, c, edges_remain2, u2, x);
       //  printf("Finished unit graph segmentation.\n"); 
@@ -140,7 +141,7 @@ __global__ void gb(image<float> *smooth_r[], image<float> *smooth_g[], image<flo
     case 3: 
     {
 //      edge *edges3 = new edge[num_edges_s];
-      initialize_edges(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
+      initialize_edges_s(edges3, num_frame, width, height, smooth_r, smooth_g, smooth_b, 3);
       //  printf("Finished edge initialization.\n");
       er_num[3] = segment_graph_s(num_vertices, num_edges_s, edges3, c, edges_remain3, u3, x);
       //  printf("Finished unit graph segmentation.\n");
